@@ -1,0 +1,57 @@
+# Data — never commit, always mount at runtime
+data/
+*.parquet
+*.csv
+*.xlsx
+predictions*.csv
+predictions_baseline.csv
+
+# Model artifacts — committed selectively (the JSON files are ok, but gitignore the raw data hashes)
+# models/*.json   ← we DO commit these (they are part of the registry demo)
+drift_reports/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+*.pem
+
+# DB
+*.db
+*.sqlite
