@@ -1,0 +1,2 @@
+{"timestamp": "2026-09-03T04:15:55.997652+00:00", "from_version": "v1_2026-08-31", "to_version": "v2_broken_2026-09-03_2026-09-03", "reason": "Promoting v2_broken for regression demo \u2014 sigma=999, expected to produce meaningless rankings"}
+{"timestamp": "2026-09-03T04:16:19.353263+00:00", "from_version": "v2_broken_2026-09-03_2026-09-03", "to_version": "v1_2026-08-31", "reason": "v2_broken_2026-09-03 produced meaningless rankings (sigma=999 threshold), rolling back to last known-good version"}
