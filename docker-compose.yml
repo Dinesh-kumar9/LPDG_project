@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data:ro
+      - ./backend/models:/app/models
+      - ./drift_reports:/app/drift_reports
+    environment:
+      - LPDG_DATA_DIR=/app/data
+      - LPDG_MODELS_DIR=/app/models
+      - LPDG_REPORTS_DIR=/app/drift_reports
+      - LPDG_PREDICTIONS_PATH=/app/predictions.csv
+    command: >
+      sh -c "python -m src.train --data /app/data --promote &&
+             python -m src.drift_monitor --data /app/data &&
+             python -m src.predict --data /app/data --out /app/predictions.csv &&
+             uvicorn api.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
