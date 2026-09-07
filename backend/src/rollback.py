@@ -144,9 +144,11 @@ def rollback_to(
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
 
-    # Update ACTIVE pointer.
+    # Atomically update ACTIVE pointer via temporary file replace.
     active_path = models_dir / "ACTIVE"
-    active_path.write_text(to_version, encoding="utf-8")
+    tmp_path = models_dir / f".ACTIVE.{dt.datetime.now(dt.UTC).timestamp()}.tmp"
+    tmp_path.write_text(to_version, encoding="utf-8")
+    tmp_path.replace(active_path)
 
     print(f"[OK] Rolled back: {from_version} -> {to_version}")
     print(f"  Reason: {reason}")

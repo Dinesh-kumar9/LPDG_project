@@ -304,9 +304,11 @@ def write_model_artifact(
 
 
 def _set_active(version_id: str, models_dir: pathlib.Path) -> None:
-    """Write the ACTIVE pointer file (single line, no newline padding)."""
+    """Atomically write the ACTIVE pointer file via temporary file replace."""
     active_path = models_dir / "ACTIVE"
-    active_path.write_text(version_id, encoding="utf-8")
+    tmp_path = models_dir / f".ACTIVE.{dt.datetime.now(dt.UTC).timestamp()}.tmp"
+    tmp_path.write_text(version_id, encoding="utf-8")
+    tmp_path.replace(active_path)
     print(f"[OK] ACTIVE -> {version_id}")
 
 

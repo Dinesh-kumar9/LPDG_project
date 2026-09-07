@@ -2,7 +2,8 @@
 **LPDG Innovation Hub Selection Challenge 2026**
 
 [![CI Pipeline](https://github.com/Dinesh-kumar9/LPDG_project/actions/workflows/ci.yml/badge.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
-[![Coverage](https://img.shields.io/badge/coverage-78.6%25-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project)
+[![Tests](https://img.shields.io/badge/tests-27%20passed-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
+[![CI Coverage Gate](https://img.shields.io/badge/coverage%20gate-20%25%20(CI)-blue.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
@@ -31,27 +32,26 @@ Raw Data Ingress (Parquet + CSV + Excel)
    │
    ▼
 [src/load.py] ─────────────► [src/drift_monitor.py]
-  • ID normalization to bare hex    • Pre-inference schema check
-  • Latin-1 German string decode    • Population & distribution monitor
-  • Schema invariant assertions     • Logs to drift_reports/
+  • ID normalization to bare hex    • Pre-inference schema validation
+  • Latin-1 German string decode    • Gateway population tracking (>5% new IDs)
+  • Schema invariant assertions     • Metric upper-bound range checks
    │
    ▼
 [src/train.py]
   • Versioned parameter extraction
-  • Cryptographic training data hash
+  • Cryptographic training data hash (SHA-256)
   • Fixed-slice verification hash
    │
    ▼
 [models/ Registry] ◄──────── [src/rollback.py]
-  • vN_<date>.json                  • Atomic ACTIVE pointer flip
+  • vN_<date>.json                  • Atomic ACTIVE pointer replacement
   • ACTIVE pointer                  • Cryptographic hash verification
   • rollback_log.jsonl audit        • Append-only rollback audit log
    │
    ▼
 [src/predict.py]
   • Pure deterministic inference
-  • Generates 120-row predictions.csv
-  • Validated by validate_submission.py (Exit code 0)
+  • Generates 120-row predictions.csv (8 weeks × 15 visits/wk)
    │
    ▼
 [FastAPI Backend + React Operations Dashboard]
@@ -61,18 +61,53 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed Mermaid diagrams and compone
 
 ---
 
-## 3. Quick Start
+## 3. Data Prerequisites & Environment Setup
 
-### Option A: One-Command Pipeline & Dashboard (Docker)
+Raw telemetry and gateway metadata are **intentionally excluded from version control** for size and confidentiality reasons (`.gitignore`).
+
+### Expected Dataset Structure
+When running the pipeline or test suite with real data, supply a dataset directory structured as follows:
+
+```
+<data-dir>/
+├── telemetry_20251103_20260323.parquet   # (or .csv) Gateway hourly metrics
+├── gateway_master_raw.csv                # (or .xlsx) Master metadata & site types
+├── field_visits_clean.csv                # Historical technician dispatches
+├── meter_read_success_weekly.csv         # Downstream reception rates
+└── engineer_review_notes.xlsx            # Qualitative investigation flags
+```
+
+### Specifying Data Location
+The pipeline does not hardcode data paths in production code:
+- **CLI Flags**: Pass `--data /path/to/data` to any script (`src.train`, `src.drift_monitor`, `src.predict`, `src.rollback`).
+- **Environment Variable**: Set `LPDG_DATA_DIR=/path/to/data`.
+- *Note on default fallback*: In development, local configuration defaulted to a local OneDrive directory (`../../OneDrive_1_8-30-2026/03-challenge-data/data`). You should explicitly pass `--data` or set `LPDG_DATA_DIR` in your environment.
+
+---
+
+## 4. Quick Start
+
+### Option A: Docker Compose (Backend API & Pipeline)
+A [`backend/Dockerfile`](backend/Dockerfile) is provided. Because raw data is not checked into git, you must supply the dataset in a `./data` directory at the repository root before launching:
+
 ```bash
-docker compose up
+# 1. Place or symlink the challenge dataset into ./data
+mkdir -p data
+# copy telemetry, master metadata, etc. into ./data
+
+# 2. Build and start services
+docker compose up --build
 ```
 - Dashboard UI: `http://localhost:8000`
 - Interactive OpenAPI Docs: `http://localhost:8000/docs`
+- Healthcheck: `http://localhost:8000/health`
 
 ### Option B: Step-by-Step CLI Execution
 ```bash
 cd backend
+
+# Install dependencies
+pip install -r requirements.txt
 
 # 1. Train model v1 and promote to ACTIVE
 python -m src.train --data "../path/to/data" --version v1 --promote
@@ -83,13 +118,14 @@ python -m src.drift_monitor --data "../path/to/data"
 # 3. Generate deterministic predictions.csv (120 rows)
 python -m src.predict --data "../path/to/data" --out predictions.csv
 
-# 4. Validate output format against official grader
-python "../path/to/validate_submission.py" predictions.csv
+# 4. Optional external submission validation
+# If the challenge validator (e.g., validate_submission.py) is available in your evaluation environment:
+python /path/to/validate_submission.py predictions.csv
 ```
 
 ---
 
-## 4. Live Session Rollback Demo (Under 60 Seconds)
+## 5. Live Session Rollback Demo (Under 60 Seconds)
 
 During live evaluation, the system demonstrates instant rollback and cryptographic verification:
 
@@ -111,20 +147,23 @@ python -m src.rollback verify --data "../path/to/data"
 
 ---
 
-## 5. Repository Layout
+## 6. Repository Layout
 
 ```
 ├── backend/
+│   ├── Dockerfile                # Backend container image definition
 │   ├── src/
-│   │   ├── load.py               # Single normalization boundary
+│   │   ├── load.py               # Single normalization boundary & schema validation
 │   │   ├── train.py              # Versioned training & artifact creation
 │   │   ├── predict.py            # Deterministic inference engine
-│   │   ├── drift_monitor.py      # Non-blocking drift detection
-│   │   └── rollback.py           # Registry controller & verification
-│   ├── api/                      # High-performance FastAPI routers
-│   ├── models/                   # Model registry (JSON + ACTIVE + audit log)
-│   ├── tests/                    # Pytest suite (17 tests, >78% coverage)
-│   └── pyproject.toml
+│   │   ├── drift_monitor.py      # Pre-inference drift detection
+│   │   └── rollback.py           # Registry controller & hash verification
+│   ├── api/                      # FastAPI routers & dependencies
+│   ├── models/                   # Model registry (JSON artifacts + ACTIVE + audit log)
+│   ├── tests/                    # Pytest suite (27 test functions across 7 modules)
+│   ├── predictions.csv           # Committed 120-row baseline submission
+│   ├── pyproject.toml            # Ruff, Mypy, Pytest configuration
+│   └── requirements.txt
 ├── frontend/                     # React 18 + TypeScript + Tailwind operations UI
 ├── drift_reports/                # Stored JSON drift monitor outputs
 ├── RETRAIN_POLICY.md             # Defensible operational retraining criteria
@@ -136,8 +175,15 @@ python -m src.rollback verify --data "../path/to/data"
 
 ---
 
-## 6. Testing & Quality Assurance
+## 7. Testing & Quality Assurance
 
-- **17/17 Unit & Integration Tests Passed**
-- **78.58% Test Coverage** (exceeds 75% gate)
-- **Zero data files committed** (mounted read-only at runtime)
+- **27 Unit & Integration Test Functions** across 7 test suites (`test_train.py`, `test_rollback.py`, `test_load.py`, `test_drift_monitor.py`, `test_determinism.py`, `test_api.py`).
+- **CI Pipeline Enforced**:
+  - **Ruff**: Linting and formatting checked across all Python code (`ruff==0.8.6`).
+  - **Mypy**: Strict type-checking with zero errors (`strict = true`).
+  - **Bandit**: Security vulnerability static analysis (`bandit -ll`).
+  - **Coverage Gate**: CI enforces a **20% coverage gate** (`--cov-fail-under=20`) to account for data-dependent integration fixtures being skipped when external raw datasets are not checked into the repository. Full test coverage runs when the raw dataset is mounted locally.
+- **Auditability & Determinism**:
+  - `models/ACTIVE` updated via atomic filesystem replace (`tmp.replace(ACTIVE)`).
+  - Every rollback audit log appended to `models/rollback_log.jsonl`.
+  - Predictions are verified deterministic: byte-identical output across separate runs on identical inputs.
