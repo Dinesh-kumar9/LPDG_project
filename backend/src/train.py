@@ -332,7 +332,7 @@ def load_model_artifact(
             f"Model artifact not found: {artifact_path}\n" f"Available versions: {available}"
         )
 
-    return json.loads(artifact_path.read_text(encoding="utf-8"))
+    return dict[str, Any](json.loads(artifact_path.read_text(encoding="utf-8")))
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────

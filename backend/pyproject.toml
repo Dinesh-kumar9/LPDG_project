@@ -70,6 +70,8 @@ module = [
     "shap.*",
     "xgboost.*",
     "sklearn.*",
+    "pandas",
+    "pandas.*",
 ]
 ignore_missing_imports = true
 
