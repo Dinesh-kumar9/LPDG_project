@@ -133,18 +133,20 @@ def score_all_weeks(
                 f"Only {len(ranked)} gateways have data before {monday}. "
                 "Cannot produce 15 ranked gateways."
             )
-        for rank, row in enumerate(ranked.head(VISITS_PER_WEEK).itertuples(index=False), 1):
-            metric = row.worst_metric or "no metric over threshold"
+        top = ranked.head(VISITS_PER_WEEK)
+        for rank, rec in enumerate(top.to_dict(orient="records"), 1):
+            metric_str = str(rec.get("worst_metric") or "no metric over threshold")
+            flagged = rec.get("flagged_hours", 0)
             rows.append(
                 {
                     "week_start": monday.isoformat(),
                     "rank": rank,
-                    "gateway_id": row.gateway_id,
-                    "score": float(row.flagged_hours),
+                    "gateway_id": rec.get("gateway_id"),
+                    "score": float(flagged),
                     "reason": (
-                        f"{int(row.flagged_hours)} hour(s) beyond {sigma}σ of this "
+                        f"{int(flagged)} hour(s) beyond {sigma}\u03c3 of this "
                         f"gateway's own {baseline_days}-day baseline in the last "
-                        f"{recent_days} days; first breach on {metric}"
+                        f"{recent_days} days; first breach on {metric_str}"
                     )[:300],
                 }
             )

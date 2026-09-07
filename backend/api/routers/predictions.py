@@ -46,16 +46,16 @@ def get_predictions(
         master_dict = {}
 
     records = []
-    for row in df.itertuples(index=False):
-        norm_id = normalize_gateway_id(str(row.gateway_id))
+    for rec in df.to_dict(orient="records"):
+        norm_id = normalize_gateway_id(str(rec.get("gateway_id", "")))
         extra = master_dict.get(norm_id, {})
         records.append(
             {
-                "week_start": str(row.week_start),
-                "rank": int(row.rank),
+                "week_start": str(rec.get("week_start", "")),
+                "rank": int(rec.get("rank", 0)),
                 "gateway_id": norm_id,
-                "score": float(row.score),
-                "reason": str(row.reason),
+                "score": float(rec.get("score", 0.0)),
+                "reason": str(rec.get("reason", "")),
                 "site_type": extra.get("site_type"),
                 "region": extra.get("region"),
                 "hw_model": extra.get("hw_model"),
