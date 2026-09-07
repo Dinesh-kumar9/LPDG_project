@@ -5,11 +5,10 @@ Unit tests for drift monitor (src/drift_monitor.py).
 from __future__ import annotations
 
 import pathlib
-import pytest
 
+from src.drift_monitor import count_consecutive_flags, run_drift_check
 from src.load import load_telemetry
 from src.train import write_model_artifact
-from src.drift_monitor import run_drift_check, count_consecutive_flags
 
 
 def test_drift_monitor_clean_data(

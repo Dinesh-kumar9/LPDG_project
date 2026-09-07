@@ -19,25 +19,20 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
+import datetime as dt
 import pathlib
 import sys
 
-import pandas as pd
-
 from src.load import load_telemetry
 from src.train import (
-    ACTIVE_FILE,
     MODELS_DIR,
+    _hash_predictions_csv,
     load_model_artifact,
     score_all_weeks,
-    _hash_predictions_csv,
 )
 
-import datetime as dt
-
-
 # ─── Prediction ────────────────────────────────────────────────────────────────
+
 
 def predict(
     data_dir: pathlib.Path,
@@ -62,7 +57,8 @@ def predict(
 
     # Derive scored weeks from the artifact or use the standard 8-week window.
     scored_weeks = [
-        dt.date.fromisoformat(w) for w in artifact.get(
+        dt.date.fromisoformat(w)
+        for w in artifact.get(
             "scored_weeks",
             [(dt.date(2026, 2, 2) + dt.timedelta(days=7 * i)).isoformat() for i in range(8)],
         )
@@ -106,6 +102,7 @@ def predict(
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(

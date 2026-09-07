@@ -6,14 +6,15 @@ from __future__ import annotations
 
 import hashlib
 import pathlib
-import pytest
 
 from src.load import load_telemetry
-from src.train import write_model_artifact
 from src.predict import predict
+from src.train import write_model_artifact
 
 
-def test_prediction_determinism(real_data_dir: pathlib.Path, temp_models_dir: pathlib.Path, tmp_path: pathlib.Path):
+def test_prediction_determinism(
+    real_data_dir: pathlib.Path, temp_models_dir: pathlib.Path, tmp_path: pathlib.Path
+):
     # 1. Train and promote v1
     telemetry = load_telemetry(real_data_dir)
     write_model_artifact(
@@ -37,6 +38,7 @@ def test_prediction_determinism(real_data_dir: pathlib.Path, temp_models_dir: pa
 
     # 4. Check contents: exactly 120 rows (8 weeks x 15 gateways)
     import pandas as pd
+
     df1 = pd.read_csv(out1)
     assert len(df1) == 120
     assert list(df1.columns) == ["week_start", "rank", "gateway_id", "score", "reason"]

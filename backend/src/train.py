@@ -32,9 +32,7 @@ import numpy as np
 import pandas as pd
 
 from src.load import (
-    TELEMETRY_REQUIRED_COLS,
     load_telemetry,
-    load_gateway_master,
 )
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -56,6 +54,7 @@ VERIFY_SLICE_DATE: Final[dt.date] = dt.date(2025, 11, 3)
 
 
 # ─── Scoring (3-sigma baseline logic) ────────────────────────────────────────
+
 
 def rank_week(
     telemetry: pd.DataFrame,
@@ -134,9 +133,7 @@ def score_all_weeks(
                 f"Only {len(ranked)} gateways have data before {monday}. "
                 "Cannot produce 15 ranked gateways."
             )
-        for rank, row in enumerate(
-            ranked.head(VISITS_PER_WEEK).itertuples(index=False), 1
-        ):
+        for rank, row in enumerate(ranked.head(VISITS_PER_WEEK).itertuples(index=False), 1):
             metric = row.worst_metric or "no metric over threshold"
             rows.append(
                 {
@@ -156,6 +153,7 @@ def score_all_weeks(
 
 # ─── Hashing utilities ────────────────────────────────────────────────────────
 
+
 def _hash_dataframe(df: pd.DataFrame) -> str:
     """SHA-256 hash of a DataFrame's canonical CSV representation."""
     csv_bytes = df.to_csv(index=False).encode("utf-8")
@@ -169,6 +167,7 @@ def _hash_predictions_csv(path: pathlib.Path) -> str:
 
 
 # ─── Fixed-slice prediction for rollback verify ───────────────────────────────
+
 
 def compute_verify_hash(
     telemetry: pd.DataFrame,
@@ -188,9 +187,7 @@ def compute_verify_hash(
       become incomparable.
     """
     verify_weeks = [VERIFY_SLICE_DATE]
-    predictions = score_all_weeks(
-        telemetry, verify_weeks, sigma, baseline_days, recent_days
-    )
+    predictions = score_all_weeks(telemetry, verify_weeks, sigma, baseline_days, recent_days)
     tmp_path = tmp_dir / "_verify_slice.csv"
     predictions.to_csv(tmp_path, index=False)
     h = _hash_predictions_csv(tmp_path)
@@ -199,6 +196,7 @@ def compute_verify_hash(
 
 
 # ─── Model artifact writer ────────────────────────────────────────────────────
+
 
 def _next_version_id(version_name: str | None, models_dir: pathlib.Path) -> str:
     """
@@ -256,23 +254,18 @@ def write_model_artifact(
     )
 
     # Compute the verify hash for rollback.py verify.
-    verify_hash = compute_verify_hash(
-        telemetry, sigma, baseline_days, recent_days, tmp_dir
-    )
+    verify_hash = compute_verify_hash(telemetry, sigma, baseline_days, recent_days, tmp_dir)
 
     # Collect known gateway IDs for the drift monitor.
     known_gateway_ids = sorted(telemetry["gateway_id"].unique().tolist())
 
     # Build the scored_weeks list for documentation (not needed at predict time).
-    scored_weeks = [
-        (dt.date(2026, 2, 2) + dt.timedelta(days=7 * i)).isoformat()
-        for i in range(8)
-    ]
+    scored_weeks = [(dt.date(2026, 2, 2) + dt.timedelta(days=7 * i)).isoformat() for i in range(8)]
 
     artifact: dict[str, object] = {
         "version_id": version_id,
         "model_type": "rule_based_3sigma",
-        "trained_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "trained_at": dt.datetime.now(dt.UTC).isoformat(),
         "training_window": {
             "start": telemetry["ts"].min().date().isoformat(),
             "end": telemetry["ts"].max().date().isoformat(),
@@ -315,7 +308,9 @@ def _set_active(version_id: str, models_dir: pathlib.Path) -> None:
     print(f"[OK] ACTIVE -> {version_id}")
 
 
-def load_model_artifact(version_id: str | None, models_dir: pathlib.Path = MODELS_DIR) -> dict[str, Any]:
+def load_model_artifact(
+    version_id: str | None, models_dir: pathlib.Path = MODELS_DIR
+) -> dict[str, Any]:
     """
     Load a model artifact JSON by version ID.
 
@@ -334,14 +329,14 @@ def load_model_artifact(version_id: str | None, models_dir: pathlib.Path = MODEL
     if not artifact_path.exists():
         available = [p.stem for p in models_dir.glob("*.json")]
         raise FileNotFoundError(
-            f"Model artifact not found: {artifact_path}\n"
-            f"Available versions: {available}"
+            f"Model artifact not found: {artifact_path}\n" f"Available versions: {available}"
         )
 
     return json.loads(artifact_path.read_text(encoding="utf-8"))
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(

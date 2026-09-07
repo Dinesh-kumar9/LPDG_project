@@ -5,19 +5,25 @@ Unit and integration tests for FastAPI backend routes.
 from __future__ import annotations
 
 import pathlib
+
 import pytest
 from fastapi.testclient import TestClient
 
+from api.dependencies import Settings, get_settings
 from api.main import app
-from api.dependencies import get_settings, Settings
 from src.load import load_telemetry
 from src.train import write_model_artifact
 
 
 @pytest.fixture
-def client(real_data_dir: pathlib.Path, temp_models_dir: pathlib.Path, temp_reports_dir: pathlib.Path, tmp_path: pathlib.Path):
+def client(
+    real_data_dir: pathlib.Path,
+    temp_models_dir: pathlib.Path,
+    temp_reports_dir: pathlib.Path,
+    tmp_path: pathlib.Path,
+):
     pred_path = tmp_path / "predictions.csv"
-    
+
     # Train and promote a test model version first
     telemetry = load_telemetry(real_data_dir)
     write_model_artifact(
@@ -98,7 +104,9 @@ def test_drift_api(client: TestClient):
     assert res_history.json()["total"] >= 1
 
 
-def test_rollback_api(client: TestClient, temp_models_dir: pathlib.Path, real_data_dir: pathlib.Path):
+def test_rollback_api(
+    client: TestClient, temp_models_dir: pathlib.Path, real_data_dir: pathlib.Path
+):
     # Train v2
     telemetry = load_telemetry(real_data_dir)
     p2 = write_model_artifact(
@@ -115,7 +123,9 @@ def test_rollback_api(client: TestClient, temp_models_dir: pathlib.Path, real_da
 
     # Rollback to v1
     v1_id = [v["version_id"] for v in res_reg.json()["versions"] if v["version_id"] != v2_id][0]
-    res_rb = client.post("/api/rollback/execute", json={"to_version": v1_id, "reason": "Testing API rollback"})
+    res_rb = client.post(
+        "/api/rollback/execute", json={"to_version": v1_id, "reason": "Testing API rollback"}
+    )
     assert res_rb.status_code == 200
     assert res_rb.json()["status"] == "success"
 

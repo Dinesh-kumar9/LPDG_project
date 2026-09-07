@@ -1,4 +1,4 @@
-﻿"""
+"""
 Unit tests for the model training artifact produced by src/train.py.
 
 Coverage targets (per TASK 6 requirements):
@@ -11,10 +11,10 @@ Coverage targets (per TASK 6 requirements):
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import pathlib
 import tempfile
-import datetime as dt
 
 import pytest
 
@@ -27,7 +27,6 @@ from src.train import (
     score_all_weeks,
     write_model_artifact,
 )
-
 
 # ─── Required artifact keys ───────────────────────────────────────────────────
 
@@ -56,6 +55,7 @@ REQUIRED_PARAMETER_KEYS = {
 
 
 # ─── Test (a): required keys ──────────────────────────────────────────────────
+
 
 def test_artifact_contains_required_keys(
     real_data_dir: pathlib.Path,
@@ -127,14 +127,15 @@ def test_artifact_scored_weeks_covers_8_weeks(
         promote=False,
     )
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
-    assert len(artifact["scored_weeks"]) == 8, (
-        f"Expected 8 scored weeks, got {len(artifact['scored_weeks'])}"
-    )
+    assert (
+        len(artifact["scored_weeks"]) == 8
+    ), f"Expected 8 scored weeks, got {len(artifact['scored_weeks'])}"
     # First week must be 2026-02-02
     assert artifact["scored_weeks"][0] == "2026-02-02"
 
 
 # ─── Test (b): training_data_hash ─────────────────────────────────────────────
+
 
 def test_training_data_hash_matches_independent_recompute(
     real_data_dir: pathlib.Path,
@@ -217,6 +218,7 @@ def test_training_data_hash_stable_across_two_loads(
 
 
 # ─── Test (c): fixed_slice_prediction_hash ────────────────────────────────────
+
 
 def test_fixed_slice_hash_matches_rerun(
     real_data_dir: pathlib.Path,

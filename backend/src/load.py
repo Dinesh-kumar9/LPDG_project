@@ -35,9 +35,9 @@ _COLON_MAC_RE: Final = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
 
 # Outcome strings in field_visits.csv are German. These are the exact byte
 # sequences in the CSV — do not translate, do not normalise to lowercase.
-OUTCOME_FAULT_FIXED: Final = "Fehler behoben"        # real fault found and repaired
-OUTCOME_NO_FAULT: Final = "Kein Fehler gefunden"     # visit found nothing
-OUTCOME_NO_ACCESS: Final = "Kein Zugang"             # technician could not enter site
+OUTCOME_FAULT_FIXED: Final = "Fehler behoben"  # real fault found and repaired
+OUTCOME_NO_FAULT: Final = "Kein Fehler gefunden"  # visit found nothing
+OUTCOME_NO_ACCESS: Final = "Kein Zugang"  # technician could not enter site
 
 # The only outcome that counts as a "real fault" for label extraction (Phase 3).
 OUTCOME_IS_FAULT: Final[frozenset[str]] = frozenset({OUTCOME_FAULT_FIXED})
@@ -45,61 +45,69 @@ OUTCOME_IS_FAULT: Final[frozenset[str]] = frozenset({OUTCOME_FAULT_FIXED})
 # Columns we require to be present in each source. We do not require ALL 57
 # telemetry columns — only those we actually use for scoring and features.
 # Schema assertions will catch any column drops in future data batches.
-TELEMETRY_REQUIRED_COLS: Final[frozenset[str]] = frozenset({
-    "gateway_id",
-    "ts_utc",
-    # 3-sigma baseline metrics (Phase 1)
-    "offline_duration_sec",
-    "disconnection_cnt",
-    "reboot_cnt",
-    # Signal quality (Phase 3 features)
-    "rssi_good",
-    "rssi_normal",
-    "rssi_bad",
-    "rscp_rsrp_good",
-    "rscp_rsrp_normal",
-    "rscp_rsrp_bad",
-    # Network type (Phase 3)
-    "network_2g",
-    "network_3g",
-    "network_4g",
-    # LoRa packet quality (Phase 3)
-    "rx_nr_pkts",
-    "rx_crc_bad",
-    # LPDG importance scores (Phase 3)
-    "reboot_importance",
-    "no_conn_importance",
-    # System health (Phase 3)
-    "avg_load1",
-    "avg_memfree",
-})
+TELEMETRY_REQUIRED_COLS: Final[frozenset[str]] = frozenset(
+    {
+        "gateway_id",
+        "ts_utc",
+        # 3-sigma baseline metrics (Phase 1)
+        "offline_duration_sec",
+        "disconnection_cnt",
+        "reboot_cnt",
+        # Signal quality (Phase 3 features)
+        "rssi_good",
+        "rssi_normal",
+        "rssi_bad",
+        "rscp_rsrp_good",
+        "rscp_rsrp_normal",
+        "rscp_rsrp_bad",
+        # Network type (Phase 3)
+        "network_2g",
+        "network_3g",
+        "network_4g",
+        # LoRa packet quality (Phase 3)
+        "rx_nr_pkts",
+        "rx_crc_bad",
+        # LPDG importance scores (Phase 3)
+        "reboot_importance",
+        "no_conn_importance",
+        # System health (Phase 3)
+        "avg_load1",
+        "avg_memfree",
+    }
+)
 
-GATEWAY_MASTER_REQUIRED_COLS: Final[frozenset[str]] = frozenset({
-    "gateway_id",
-    "tenant",
-    "site_type",
-    "region",
-    "hw_model",
-    "antenna_type",
-    "fw_version",
-    "installed_on",
-    "n_meters_installed",
-})
+GATEWAY_MASTER_REQUIRED_COLS: Final[frozenset[str]] = frozenset(
+    {
+        "gateway_id",
+        "tenant",
+        "site_type",
+        "region",
+        "hw_model",
+        "antenna_type",
+        "fw_version",
+        "installed_on",
+        "n_meters_installed",
+    }
+)
 
-FIELD_VISITS_REQUIRED_COLS: Final[frozenset[str]] = frozenset({
-    "visit_id",
-    "gateway_id",
-    "requested_on",
-    "visited_on",
-    "outcome",
-})
+FIELD_VISITS_REQUIRED_COLS: Final[frozenset[str]] = frozenset(
+    {
+        "visit_id",
+        "gateway_id",
+        "requested_on",
+        "visited_on",
+        "outcome",
+    }
+)
 
-METER_READ_REQUIRED_COLS: Final[frozenset[str]] = frozenset({
-    "week_start",
-    "gateway_id",
-    "meters_expected",
-    "meters_read",
-})
+METER_READ_REQUIRED_COLS: Final[frozenset[str]] = frozenset(
+    {
+        "week_start",
+        "gateway_id",
+        "meters_expected",
+        "meters_read",
+    }
+)
 
 # How many master gateways are allowed to have no telemetry before we raise.
 # We confirmed 52 decommissioned/new gateways as of Aug 2025. Allow up to 80
@@ -108,6 +116,7 @@ _MAX_MASTER_IDS_ABSENT_FROM_TELEMETRY: Final = 80
 
 
 # ─── Core normalization ────────────────────────────────────────────────────────
+
 
 def normalize_gateway_id(raw: str) -> str:
     """
@@ -134,6 +143,7 @@ def normalize_gateway_id(raw: str) -> str:
 
 # ─── Schema assertions ─────────────────────────────────────────────────────────
 
+
 def _assert_schema(df: pd.DataFrame, required: frozenset[str], source: str) -> None:
     """
     Raise ValueError if any required column is missing.
@@ -150,6 +160,7 @@ def _assert_schema(df: pd.DataFrame, required: frozenset[str], source: str) -> N
 
 
 # ─── Individual loaders ────────────────────────────────────────────────────────
+
 
 def load_telemetry(data_dir: pathlib.Path) -> pd.DataFrame:
     """
@@ -280,6 +291,7 @@ def load_engineer_review(data_dir: pathlib.Path) -> pd.DataFrame:
 
 
 # ─── Combined loader ──────────────────────────────────────────────────────────
+
 
 def load_all(data_dir: pathlib.Path) -> dict[str, pd.DataFrame]:
     """

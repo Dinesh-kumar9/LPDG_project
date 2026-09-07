@@ -32,17 +32,15 @@ import tempfile
 
 from src.load import load_telemetry
 from src.train import (
-    ACTIVE_FILE,
     MODELS_DIR,
-    ROLLBACK_LOG,
     VERIFY_SLICE_DATE,
     _hash_predictions_csv,
-    score_all_weeks,
     load_model_artifact,
+    score_all_weeks,
 )
 
-
 # ─── Registry inspection ──────────────────────────────────────────────────────
+
 
 def get_current_active(models_dir: pathlib.Path = MODELS_DIR) -> str | None:
     """Return the current ACTIVE version ID, or None if ACTIVE does not exist."""
@@ -106,6 +104,7 @@ def get_rollback_log(models_dir: pathlib.Path = MODELS_DIR) -> list[dict]:  # ty
 
 # ─── Rollback execution ───────────────────────────────────────────────────────
 
+
 def rollback_to(
     to_version: str,
     reason: str,
@@ -136,7 +135,7 @@ def rollback_to(
 
     # Write audit log BEFORE updating ACTIVE.
     log_entry = {
-        "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "timestamp": dt.datetime.now(dt.UTC).isoformat(),
         "from_version": from_version,
         "to_version": to_version,
         "reason": reason,
@@ -155,6 +154,7 @@ def rollback_to(
 
 
 # ─── Verify ───────────────────────────────────────────────────────────────────
+
 
 def verify(
     data_dir: pathlib.Path,
@@ -218,16 +218,15 @@ def verify(
         print(f"[OK] PASS -- {ver} produces byte-identical output to training time.")
         return True
     else:
-        print(f"[FAIL] hash mismatch. The active version does not reproduce expected output.")
+        print("[FAIL] hash mismatch. The active version does not reproduce expected output.")
         return False
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Manage the model registry and execute rollbacks."
-    )
+    parser = argparse.ArgumentParser(description="Manage the model registry and execute rollbacks.")
     parser.add_argument("--models-dir", type=pathlib.Path, default=MODELS_DIR)
     subparsers = parser.add_subparsers(dest="command", required=True)
 

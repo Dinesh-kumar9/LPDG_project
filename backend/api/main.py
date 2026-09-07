@@ -5,12 +5,13 @@ FastAPI application entry point for LPDG Gateway Prioritization.
 from __future__ import annotations
 
 import pathlib
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from api.dependencies import get_settings
-from api.routers import registry, predictions, rollback, drift, pipeline
+from api.routers import drift, pipeline, predictions, registry, rollback
 
 settings = get_settings()
 

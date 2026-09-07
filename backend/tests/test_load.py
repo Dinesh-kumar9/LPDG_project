@@ -5,20 +5,19 @@ Unit tests for src/load.py (normalization, Latin-1 decode, schema assertions).
 from __future__ import annotations
 
 import pathlib
+
 import pytest
-import pandas as pd
 
 from src.load import (
-    normalize_gateway_id,
-    load_telemetry,
-    load_gateway_master,
-    load_field_visits,
-    load_meter_read_success,
-    load_engineer_review,
-    load_all,
-    OUTCOME_IS_FAULT,
     OUTCOME_FAULT_FIXED,
+    OUTCOME_IS_FAULT,
     OUTCOME_NO_FAULT,
+    load_all,
+    load_engineer_review,
+    load_field_visits,
+    load_gateway_master,
+    load_meter_read_success,
+    normalize_gateway_id,
 )
 
 

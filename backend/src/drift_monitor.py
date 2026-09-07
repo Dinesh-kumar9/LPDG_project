@@ -34,18 +34,18 @@ from src.load import (
     TELEMETRY_REQUIRED_COLS,
     load_telemetry,
 )
-from src.train import ACTIVE_FILE, MODELS_DIR, load_model_artifact
-
+from src.train import MODELS_DIR, load_model_artifact
 
 # ─── Report dataclass ─────────────────────────────────────────────────────────
+
 
 @dataclass
 class DriftReport:
     """Complete drift check result — serializable to JSON."""
 
-    checked_at: str                              # ISO-8601 timestamp
+    checked_at: str  # ISO-8601 timestamp
     data_path: str
-    reference_version: str                       # model version that defines "normal"
+    reference_version: str  # model version that defines "normal"
 
     # Schema drift
     new_columns: list[str] = field(default_factory=list)
@@ -85,6 +85,7 @@ MONITORED_METRICS: list[str] = [
 
 
 # ─── Drift checks ─────────────────────────────────────────────────────────────
+
 
 def _check_schema(
     new_df: pd.DataFrame,
@@ -191,6 +192,7 @@ def _check_value_ranges(
 
 # ─── Consecutive drift counter ────────────────────────────────────────────────
 
+
 def count_consecutive_flags(reports_dir: pathlib.Path) -> int:
     """
     Count how many of the most-recent drift reports have drift_flagged=True.
@@ -212,6 +214,7 @@ def count_consecutive_flags(reports_dir: pathlib.Path) -> int:
 
 # ─── Main check function ──────────────────────────────────────────────────────
 
+
 def run_drift_check(
     data_dir: pathlib.Path,
     reports_dir: pathlib.Path,
@@ -232,7 +235,7 @@ def run_drift_check(
     new_telemetry = load_telemetry(data_dir)
 
     report = DriftReport(
-        checked_at=dt.datetime.now(dt.timezone.utc).isoformat(),
+        checked_at=dt.datetime.now(dt.UTC).isoformat(),
         data_path=str(data_dir),
         reference_version=ref_version,
         summary="No drift detected.",
@@ -263,6 +266,7 @@ def run_drift_check(
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(

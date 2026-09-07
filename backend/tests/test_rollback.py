@@ -5,17 +5,18 @@ Unit tests for model registry and rollback mechanism (src/rollback.py).
 from __future__ import annotations
 
 import pathlib
+
 import pytest
 
 from src.load import load_telemetry
-from src.train import write_model_artifact
 from src.rollback import (
     get_current_active,
+    get_rollback_log,
     list_versions,
     rollback_to,
     verify,
-    get_rollback_log,
 )
+from src.train import write_model_artifact
 
 
 def test_rollback_lifecycle(real_data_dir: pathlib.Path, temp_models_dir: pathlib.Path):
@@ -67,4 +68,6 @@ def test_rollback_lifecycle(real_data_dir: pathlib.Path, temp_models_dir: pathli
 
 def test_rollback_to_invalid_version_raises(temp_models_dir: pathlib.Path):
     with pytest.raises(FileNotFoundError):
-        rollback_to("non_existent_version", reason="testing error handling", models_dir=temp_models_dir)
+        rollback_to(
+            "non_existent_version", reason="testing error handling", models_dir=temp_models_dir
+        )
