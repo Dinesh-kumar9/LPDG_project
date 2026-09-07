@@ -1,8 +1,8 @@
 # LPDG Gateway Visit Prioritization (MLOps Track)
 **LPDG Innovation Hub Selection Challenge 2026**
 
-[![CI Pipeline](https://github.com/Dinesh-kumar9/lpdg-gateway-prioritization/actions/workflows/ci.yml/badge.svg)](https://github.com/Dinesh-kumar9/lpdg-gateway-prioritization/actions)
-[![Coverage](https://img.shields.io/badge/coverage-78.6%25-brightgreen.svg)](https://github.com/Dinesh-kumar9/lpdg-gateway-prioritization)
+[![CI Pipeline](https://github.com/Dinesh-kumar9/LPDG_project/actions/workflows/ci.yml/badge.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
+[![Coverage](https://img.shields.io/badge/coverage-78.6%25-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
