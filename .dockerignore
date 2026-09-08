@@ -1,0 +1,15 @@
+.git
+.github
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.py[cod]
+.venv
+venv
+data
+drift_reports
+backend/models
+backend/predictions.csv
+frontend/node_modules
+frontend/dist
