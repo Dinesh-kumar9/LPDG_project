@@ -42,6 +42,7 @@ REQUIRED_ARTIFACT_KEYS = {
     "fixed_slice_date",
     "known_gateway_ids",
     "known_gateway_count",
+    "drift_reference",
     "promoted",
 }
 
