@@ -92,17 +92,29 @@ def _check_schema(
     reference_version_artifact: dict,  # type: ignore[type-arg]
     report: DriftReport,
 ) -> None:
-    """Check for missing required columns relative to the expected schema."""
-    # load_telemetry converts ts_utc -> ts
-    required = (TELEMETRY_REQUIRED_COLS - {"ts_utc"}) | {"ts"}
+    """Check the incoming column set against the training-time reference."""
+    # New artifacts store the complete normalized telemetry schema.  Existing
+    # artifacts predate that field, so retain a safe required-column fallback.
+    reference = reference_version_artifact.get("drift_reference", {})
+    reference_columns = reference.get("schema_columns", [])
+    required = set(reference_columns)
+    if not required:
+        required = set((TELEMETRY_REQUIRED_COLS - {"ts_utc"}) | {"ts"})
     actual = set(new_df.columns)
 
     missing = sorted(required - actual)
+    # A legacy artifact has no complete training schema, so optional telemetry
+    # fields must not be misclassified as newly introduced columns.
+    new = sorted(actual - required) if reference_columns else []
     report.missing_columns = missing
+    report.new_columns = new
 
-    if missing:
+    if missing or new:
         report.drift_flagged = True
-        report.summary = f"Schema drift: {len(missing)} missing column(s): {missing}"
+        report.summary = (
+            f"Schema drift: {len(missing)} missing column(s), {len(new)} new column(s). "
+            f"Missing: {missing}; new: {new}"
+        )
 
 
 def _check_gateway_population(
@@ -166,19 +178,23 @@ def _check_value_ranges(
     if existing_df.empty:
         return
 
-    # Compute historical maximums from the training telemetry window.
-    # We approximate this using the new data itself for now; in Phase 3 we
-    # store per-gateway metric stats in the model artifact.
-    historical_max = existing_df.groupby("gateway_id")[MONITORED_METRICS].max()
+    reference = reference_version_artifact.get("drift_reference", {})
+    historical_maxima = reference.get("metric_maxima", {})
+    if not historical_maxima:
+        # Legacy artifacts do not contain training-time maxima.  Do not invent
+        # a baseline from the incoming data; schema and population checks still
+        # run, while full range monitoring begins after the next training run.
+        return
 
     flagged: dict[str, list[str]] = {}
     for metric in MONITORED_METRICS:
-        metric_max = existing_df.groupby("gateway_id")[metric].max()
-        hist_max = historical_max[metric]
-        threshold = hist_max * VALUE_RANGE_MULTIPLIER
-        exceeded = metric_max[metric_max > threshold]
-        if not exceeded.empty:
-            flagged[metric] = exceeded.index.tolist()
+        historical_max = historical_maxima.get(metric)
+        if historical_max is None or metric not in existing_df.columns:
+            continue
+        threshold = float(historical_max) * VALUE_RANGE_MULTIPLIER
+        exceeded_ids = existing_df.loc[existing_df[metric] > threshold, "gateway_id"].unique()
+        if len(exceeded_ids):
+            flagged[metric] = sorted(str(gateway_id) for gateway_id in exceeded_ids)
 
     report.out_of_range_metrics = flagged
     if flagged:
@@ -232,7 +248,10 @@ def run_drift_check(
     artifact = load_model_artifact(version_id, models_dir)
     ref_version = artifact["version_id"]
 
-    new_telemetry = load_telemetry(data_dir)
+    # Keep schema validation non-fatal here so a missing or unexpected column
+    # becomes an auditable drift report.  Training and prediction use strict
+    # validation and will not consume a batch that has been flagged.
+    new_telemetry = load_telemetry(data_dir, validate_schema=False)
 
     report = DriftReport(
         checked_at=dt.datetime.now(dt.UTC).isoformat(),

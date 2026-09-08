@@ -261,6 +261,14 @@ def write_model_artifact(
     # Collect known gateway IDs for the drift monitor.
     known_gateway_ids = sorted(telemetry["gateway_id"].unique().tolist())
 
+    # Preserve an explicit training-time reference for drift monitoring.  This
+    # makes range checks a comparison with the training distribution rather
+    # than a tautological comparison with the incoming batch itself.
+    drift_reference = {
+        "schema_columns": sorted(telemetry.columns.tolist()),
+        "metric_maxima": {metric: float(telemetry[metric].max()) for metric in METRICS},
+    }
+
     # Build the scored_weeks list for documentation (not needed at predict time).
     scored_weeks = [(dt.date(2026, 2, 2) + dt.timedelta(days=7 * i)).isoformat() for i in range(8)]
 
@@ -285,6 +293,7 @@ def write_model_artifact(
         "fixed_slice_date": VERIFY_SLICE_DATE.isoformat(),
         "known_gateway_ids": known_gateway_ids,
         "known_gateway_count": len(known_gateway_ids),
+        "drift_reference": drift_reference,
         "promoted": promote,
     }
 

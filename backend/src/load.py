@@ -162,7 +162,7 @@ def _assert_schema(df: pd.DataFrame, required: frozenset[str], source: str) -> N
 # ─── Individual loaders ────────────────────────────────────────────────────────
 
 
-def load_telemetry(data_dir: pathlib.Path) -> pd.DataFrame:
+def load_telemetry(data_dir: pathlib.Path, *, validate_schema: bool = True) -> pd.DataFrame:
     """
     Load all telemetry parquet partitions from data_dir/telemetry/.
 
@@ -180,15 +180,22 @@ def load_telemetry(data_dir: pathlib.Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Telemetry directory not found: {tel_path}")
 
     df = pd.read_parquet(tel_path)
-    _assert_schema(df, TELEMETRY_REQUIRED_COLS, "telemetry")
+    if validate_schema:
+        _assert_schema(df, TELEMETRY_REQUIRED_COLS, "telemetry")
 
-    # Normalize IDs (telemetry is already bare hex but may have case differences)
-    df["gateway_id"] = df["gateway_id"].apply(normalize_gateway_id)
+    # The drift monitor deliberately loads with validate_schema=False so that it
+    # can report a changed schema instead of failing before it has a report.
+    # Prediction and training keep the strict default and therefore still fail
+    # fast on malformed data.
+    if "gateway_id" in df.columns:
+        # Normalize IDs (telemetry is already bare hex but may have case differences)
+        df["gateway_id"] = df["gateway_id"].apply(normalize_gateway_id)
 
-    # Parse timestamp — use datetime.timedelta in arithmetic (not pd.Timedelta)
-    # to avoid NumPy 2.x deprecation warnings on Python 3.12.
-    df["ts"] = pd.to_datetime(df["ts_utc"], utc=True)
-    df = df.drop(columns=["ts_utc"])
+    if "ts_utc" in df.columns:
+        # Parse timestamp — use datetime.timedelta in arithmetic (not pd.Timedelta)
+        # to avoid NumPy 2.x deprecation warnings on Python 3.12.
+        df["ts"] = pd.to_datetime(df["ts_utc"], utc=True)
+        df = df.drop(columns=["ts_utc"])
 
     return df
 
