@@ -2,7 +2,7 @@
 **LPDG Innovation Hub Selection Challenge 2026**
 
 [![CI Pipeline](https://github.com/Dinesh-kumar9/LPDG_project/actions/workflows/ci.yml/badge.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
-[![Tests](https://img.shields.io/badge/tests-27%20passed-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
+[![Tests](https://img.shields.io/badge/tests-30%20functions-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
 [![CI Coverage Gate](https://img.shields.io/badge/coverage%20gate-20%25%20(CI)-blue.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
@@ -70,11 +70,12 @@ When running the pipeline or test suite with real data, supply a dataset directo
 
 ```
 <data-dir>/
-├── telemetry_20251103_20260323.parquet   # (or .csv) Gateway hourly metrics
-├── gateway_master_raw.csv                # (or .xlsx) Master metadata & site types
-├── field_visits_clean.csv                # Historical technician dispatches
-├── meter_read_success_weekly.csv         # Downstream reception rates
-└── engineer_review_notes.xlsx            # Qualitative investigation flags
+├── telemetry/
+│   └── month=YYYY-MM/*.parquet           # Gateway hourly metrics
+├── gateway_master.csv                    # Latin-1 master metadata & site types
+├── field_visits.csv                      # Historical technician dispatches
+├── meter_read_success.csv                # Downstream reception rates
+└── engineer_review_2026-02.xlsx          # Qualitative investigation flags
 ```
 
 ### Specifying Data Location
@@ -160,7 +161,7 @@ python -m src.rollback verify --data "../path/to/data"
 │   │   └── rollback.py           # Registry controller & hash verification
 │   ├── api/                      # FastAPI routers & dependencies
 │   ├── models/                   # Model registry (JSON artifacts + ACTIVE + audit log)
-│   ├── tests/                    # Pytest suite (27 test functions across 7 modules)
+│   ├── tests/                    # Pytest suite (30 test functions across 7 modules)
 │   ├── predictions.csv           # Committed 120-row baseline submission
 │   ├── pyproject.toml            # Ruff, Mypy, Pytest configuration
 │   └── requirements.txt
@@ -177,7 +178,7 @@ python -m src.rollback verify --data "../path/to/data"
 
 ## 7. Testing & Quality Assurance
 
-- **27 Unit & Integration Test Functions** across 7 test suites (`test_train.py`, `test_rollback.py`, `test_load.py`, `test_drift_monitor.py`, `test_determinism.py`, `test_api.py`).
+- **30 Unit & Integration Test Functions** across 7 test suites, including a portable synthetic-data pipeline test that runs without private challenge data.
 - **CI Pipeline Enforced**:
   - **Ruff**: Linting and formatting checked across all Python code (`ruff==0.8.6`).
   - **Mypy**: Strict type-checking with zero errors (`strict = true`).
@@ -187,3 +188,8 @@ python -m src.rollback verify --data "../path/to/data"
   - `models/ACTIVE` updated via atomic filesystem replace (`tmp.replace(ACTIVE)`).
   - Every rollback audit log appended to `models/rollback_log.jsonl`.
   - Predictions are verified deterministic: byte-identical output across separate runs on identical inputs.
+
+## 8. Demonstration Runbook
+
+See [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) for the exact submission validation,
+drift-monitor, and rollback commands to run during the live session.
