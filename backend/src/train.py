@@ -26,7 +26,10 @@ import hashlib
 import json
 import pathlib
 import sys
+import logging
 from typing import Any, Final
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
@@ -48,6 +51,16 @@ DEFAULT_RECENT_DAYS: Final[int] = 7
 VISITS_PER_WEEK: Final[int] = 15
 METRICS: Final[list[str]] = ["offline_duration_sec", "disconnection_cnt", "reboot_cnt"]
 
+# Minimum number of hourly rows a gateway must have in the baseline window
+# before its 3-sigma statistics are considered reliable.  Gateways with fewer
+# rows are treated as having insufficient history: they are NOT flagged (score=0)
+# and are deliberately excluded from the top-15 ranked output.
+# Rationale: with < 24 hours of history the per-gateway std is computed from
+# too few points to be meaningful; flagging such gateways would be spurious.
+# POLICY: this is a deliberate operational choice, NOT a silent accident.
+# See DECISIONS.md ADR-0003 for the broader data-quality boundary philosophy.
+MIN_BASELINE_HOURS: Final[int] = 24
+
 # Fixed slice used by rollback verify — a Monday well inside the training window.
 # Never change this after v1 is deployed; it must stay constant for hash comparison.
 VERIFY_SLICE_DATE: Final[dt.date] = dt.date(2025, 11, 3)
@@ -62,7 +75,8 @@ def rank_week(
     sigma: float,
     baseline_days: int,
     recent_days: int,
-) -> pd.DataFrame:
+    min_baseline_hours: int = MIN_BASELINE_HOURS,
+) -> tuple[pd.DataFrame, list[str]]:
     """
     Score all gateways for one week using per-gateway 3-sigma anomaly detection.
 
@@ -73,8 +87,20 @@ def rank_week(
          (mean + sigma * std) for that gateway.
       4. Score = total flagged hours across all metrics.
 
-    Returns a DataFrame with columns: gateway_id, flagged_hours, worst_metric
-    sorted descending by flagged_hours.
+    Returns:
+      (ranked_df, excluded_ids) where:
+        - ranked_df has columns: gateway_id, flagged_hours, worst_metric
+          sorted descending by flagged_hours.
+        - excluded_ids lists gateway IDs excluded due to insufficient baseline
+          history (fewer than `min_baseline_hours` rows in the baseline window).
+
+    POLICY — insufficient-history exclusion (FAQ 6.11):
+      A gateway with < `min_baseline_hours` rows in the baseline window has
+      unreliable per-gateway statistics.  Such gateways are EXCLUDED from the
+      scored output with a logged warning.  They receive score=0 and are NOT
+      silently dropped — callers receive the excluded list so they can surface
+      it in monitoring dashboards.  This is a deliberate operational decision,
+      not a side-effect of NaN arithmetic.
 
     WHY per-gateway baselines:
       Different gateways have very different normal behaviour (site type, meters
@@ -89,7 +115,15 @@ def rank_week(
 
     window = telemetry[(telemetry["ts"] >= baseline_start) & (telemetry["ts"] < end)]
     if window.empty:
-        return pd.DataFrame(columns=["gateway_id", "flagged_hours", "worst_metric"])
+        return pd.DataFrame(columns=["gateway_id", "flagged_hours", "worst_metric"]), []
+
+    # ── POLICY: exclude gateways with insufficient baseline history ───────────
+    baseline_counts = window.groupby("gateway_id").size()
+    insufficient = baseline_counts[baseline_counts < min_baseline_hours].index.tolist()
+    # Remove their rows from the baseline stats and recent window so they are
+    # fully excluded from scoring — not left with NaN-derived zeros.
+    if insufficient:
+        window = window[~window["gateway_id"].isin(insufficient)]
 
     stats = window.groupby("gateway_id")[METRICS].agg(["mean", "std"])
     recent = window[window["ts"] >= recent_start].copy()
@@ -110,11 +144,14 @@ def rank_week(
     recent["flagged"] = flags
     recent["worst_metric"] = worst
 
+    if recent.empty:
+        return pd.DataFrame(columns=["gateway_id", "flagged_hours", "worst_metric"]), insufficient
+
     grouped = recent.groupby("gateway_id").agg(
         flagged_hours=("flagged", "sum"),
         worst_metric=("worst_metric", lambda s: next((v for v in s if v), "")),
     )
-    return grouped.sort_values("flagged_hours", ascending=False).reset_index()
+    return grouped.sort_values("flagged_hours", ascending=False).reset_index(), insufficient
 
 
 def score_all_weeks(
@@ -124,10 +161,26 @@ def score_all_weeks(
     baseline_days: int,
     recent_days: int,
 ) -> pd.DataFrame:
-    """Score all 8 weeks and return a flat DataFrame ready for predict.py."""
+    """
+    Score all 8 weeks and return a flat DataFrame ready for predict.py.
+
+    Gateways with insufficient baseline history are excluded per the policy
+    documented in rank_week.  A WARNING is logged for each week listing the
+    excluded IDs so operators can monitor new/quiet gateways.
+    """
     rows = []
     for monday in scored_weeks:
-        ranked = rank_week(telemetry, monday, sigma, baseline_days, recent_days)
+        ranked, excluded = rank_week(telemetry, monday, sigma, baseline_days, recent_days)
+        if excluded:
+            logger.warning(
+                "week=%s: %d gateway(s) excluded — insufficient baseline history "
+                "(< %d hours in the %d-day window): %s",
+                monday.isoformat(),
+                len(excluded),
+                MIN_BASELINE_HOURS,
+                baseline_days,
+                excluded,
+            )
         if len(ranked) < VISITS_PER_WEEK:
             raise SystemExit(
                 f"Only {len(ranked)} gateways have data before {monday}. "

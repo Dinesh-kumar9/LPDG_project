@@ -81,3 +81,20 @@ The drift monitor strictly logs findings and sets `drift_flagged = True`. It **n
 1. **Intra-Week Real-Time Streaming:** The system operates on weekly batch increments (Mondays 00:00 UTC). It is not designed for sub-hour real-time telemetry streaming.
 2. **Autonomous Physical Work Order Dispatch:** The system generates ranked visit candidates with explainable risk reasons. It does not interface directly with third-party ERP/field ticketing software without human review.
 3. **Hardware Defect Repair Without Field Inspection:** Anomaly scoring identifies behavioral divergence; root-cause confirmation requires on-site technician diagnostic.
+
+---
+
+## ADR 0007: Deliberate Exclusion of New and Gone-Quiet Gateways
+
+### Context
+The 3-sigma scoring logic requires per-gateway historical statistics. A gateway with fewer than 24 hours in the baseline window produces an unreliable standard deviation (std from 1–23 points vs. 24×28=672 in the normal case). Two failure modes were identified during audit:
+- **New gateway** (< 28 days history): baseline std is computed from too few points; flagging decisions would be spurious.
+- **Gone-quiet gateway** (zero rows in the recent 7-day window): no recent observations means 0 flagged hours; the gateway simply scores 0.
+
+### Decision
+Gateways with fewer than `MIN_BASELINE_HOURS = 24` hours in the baseline window are **explicitly excluded** from scoring for that week. This is implemented in `rank_week()` via a count check before any stats are computed — not as a side-effect of NaN arithmetic from `fillna(False)`. The exclusion list is returned to `score_all_weeks()` which logs a `WARNING` for each excluded gateway. Gone-quiet gateways (zero recent rows but sufficient baseline) receive a score of 0 and fall below the top-15 cutoff naturally.
+
+### Consequences
+- **Positive:** New gateway exclusion is auditable via log output. No spurious flags on gateways whose behavior is not yet characterized. NaN scores cannot appear in output.
+- **Negative:** A genuinely faulty new gateway that fails within its first 24 hours will not be captured until it accumulates sufficient history. This is an acceptable operational trade-off documented here.
+- **Alternative rejected:** Using a global (cross-gateway) fallback std for gateways with short history — rejected because this would conflate gateways with very different failure modes (rural vs. urban, 4G vs. 2G) and produce inconsistent flagging.
