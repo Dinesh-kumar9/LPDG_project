@@ -1,27 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  RotateCcw, 
-  Database, 
-  Layers, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Download, 
-  RefreshCw, 
-  Radio, 
-  ShieldCheck, 
+import {
+  Activity,
+  RotateCcw,
+  Database,
+  Layers,
+  CheckCircle2,
+  AlertTriangle,
+  Download,
+  RefreshCw,
+  Radio,
+  ShieldCheck,
   FileText,
+  TrendingUp,
+  Cpu,
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  CartesianGrid, 
-  Cell 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Cell,
 } from 'recharts';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Prediction {
   week_start: string;
@@ -67,10 +71,123 @@ interface DriftReport {
   new_gateway_id_pct: number;
 }
 
+// ── Custom tooltip ─────────────────────────────────────────────────────────────
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+}) => {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const rank = item.payload?.rank;
+  return (
+    <div
+      style={{
+        background: '#0c1120',
+        border: '1px solid rgba(34,211,238,0.35)',
+        borderRadius: 10,
+        padding: '12px 16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+        pointerEvents: 'none',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 6 }}>
+        <span style={{ color: '#cbd5e1', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          Gateway …{label}
+        </span>
+        {rank !== undefined && (
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              padding: '2px 7px',
+              borderRadius: 4,
+              background:
+                rank === 1
+                  ? 'rgba(244,63,94,0.25)'
+                  : rank <= 3
+                  ? 'rgba(249,115,22,0.25)'
+                  : rank <= 5
+                  ? 'rgba(245,158,11,0.25)'
+                  : 'rgba(34,211,238,0.2)',
+              color:
+                rank === 1
+                  ? '#f43f5e'
+                  : rank <= 3
+                  ? '#f97316'
+                  : rank <= 5
+                  ? '#f59e0b'
+                  : '#22d3ee',
+            }}
+          >
+            Rank #{rank}
+          </span>
+        )}
+      </div>
+      <p style={{ color: '#ffffff', fontWeight: 800, fontSize: 19, margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
+        {Number(item.value).toFixed(1)}
+        <span style={{ color: '#22d3ee', fontWeight: 600, fontSize: 13, marginLeft: 8 }}>flagged hrs</span>
+      </p>
+    </div>
+  );
+};
+
+// ── Stat Card ──────────────────────────────────────────────────────────────────
+const StatCard = ({
+  icon,
+  label,
+  value,
+  accent = '#22d3ee',
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  accent?: string;
+}) => (
+  <div className="card-subtle" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        background: `${accent}18`,
+        border: `1px solid ${accent}30`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      {icon}
+    </div>
+    <div>
+      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: '#f0f4ff' }}>{value}</div>
+    </div>
+  </div>
+);
+
+// ── Section header ─────────────────────────────────────────────────────────────
+const SectionTitle = ({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string }) => (
+  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 20 }}>
+    <div style={{ paddingTop: 2 }}>{icon}</div>
+    <div>
+      <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f0f4ff' }}>{title}</h2>
+      {sub && <p style={{ margin: '3px 0 0', fontSize: 12, color: '#64748b' }}>{sub}</p>}
+    </div>
+  </div>
+);
+
+// ── Main App ───────────────────────────────────────────────────────────────────
 export function App() {
   const [activeTab, setActiveTab] = useState<'predictions' | 'registry' | 'rollback' | 'drift'>('predictions');
-  
-  // Data states
+
   const [predictionsData, setPredictionsData] = useState<Prediction[]>([]);
   const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>('');
@@ -79,55 +196,45 @@ export function App() {
   const [rollbackLogs, setRollbackLogs] = useState<RollbackEntry[]>([]);
   const [driftStatus, setDriftStatus] = useState<DriftReport | null>(null);
   const [consecutiveDriftWeeks, setConsecutiveDriftWeeks] = useState<number>(0);
-  
-  // Action states
+
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [targetVersion, setTargetVersion] = useState<string>('');
   const [rollbackReason, setRollbackReason] = useState<string>('');
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Fetch initial data
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // 1. Fetch registry
-      const regRes = await fetch('/api/registry');
-      if (regRes.ok) {
-        const regData = await regRes.json();
-        setRegistryVersions(regData.versions || []);
-        setActiveVersion(regData.active_version || '');
-      }
+      const [regRes, predRes, driftRes, rbRes] = await Promise.allSettled([
+        fetch('/api/registry'),
+        fetch('/api/predictions'),
+        fetch('/api/drift/status'),
+        fetch('/api/rollback/log'),
+      ]);
 
-      // 2. Fetch predictions
-      const predRes = await fetch('/api/predictions');
-      if (predRes.ok) {
-        const pData = await predRes.json();
-        setPredictionsData(pData.predictions || []);
-        setAvailableWeeks(pData.available_weeks || []);
-        if (!selectedWeek && pData.available_weeks?.length > 0) {
-          setSelectedWeek(pData.available_weeks[0]);
-        }
+      if (regRes.status === 'fulfilled' && regRes.value.ok) {
+        const d = await regRes.value.json();
+        setRegistryVersions(d.versions || []);
+        setActiveVersion(d.active_version || '');
       }
-
-      // 3. Fetch drift
-      const driftRes = await fetch('/api/drift/status');
-      if (driftRes.ok) {
-        const dData = await driftRes.json();
-        setDriftStatus(dData.latest_report);
-        setConsecutiveDriftWeeks(dData.consecutive_flagged_weeks || 0);
+      if (predRes.status === 'fulfilled' && predRes.value.ok) {
+        const d = await predRes.value.json();
+        setPredictionsData(d.predictions || []);
+        setAvailableWeeks(d.available_weeks || []);
+        if (!selectedWeek && d.available_weeks?.length > 0) setSelectedWeek(d.available_weeks[0]);
       }
-
-      // 4. Fetch rollback log
-      const rbRes = await fetch('/api/rollback/log');
-      if (rbRes.ok) {
-        const rbData = await rbRes.json();
-        setRollbackLogs(rbData.logs || []);
+      if (driftRes.status === 'fulfilled' && driftRes.value.ok) {
+        const d = await driftRes.value.json();
+        setDriftStatus(d.latest_report);
+        setConsecutiveDriftWeeks(d.consecutive_flagged_weeks || 0);
       }
-
+      if (rbRes.status === 'fulfilled' && rbRes.value.ok) {
+        const d = await rbRes.value.json();
+        setRollbackLogs(d.logs || []);
+      }
     } catch (err) {
-      console.error("Failed to load dashboard data", err);
+      console.error('Failed to load dashboard data', err);
     } finally {
       setLoading(false);
     }
@@ -135,35 +242,34 @@ export function App() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 8000);
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRollback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetVersion || !rollbackReason) {
-      setActionFeedback({ type: 'error', message: 'Please select a version and provide a reason.' });
+      setActionFeedback({ type: 'error', message: 'Select a version and provide an audit reason.' });
       return;
     }
-
     try {
       setActionLoading(true);
       const res = await fetch('/api/rollback/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to_version: targetVersion, reason: rollbackReason })
+        body: JSON.stringify({ to_version: targetVersion, reason: rollbackReason }),
       });
-
       if (res.ok) {
-        setActionFeedback({ type: 'success', message: `Successfully rolled back to ${targetVersion} and updated predictions.` });
+        setActionFeedback({ type: 'success', message: `Rolled back to ${targetVersion}. ACTIVE pointer updated.` });
         setRollbackReason('');
         await fetchData();
       } else {
         const err = await res.json();
         setActionFeedback({ type: 'error', message: err.detail || 'Rollback failed.' });
       }
-    } catch (err) {
-      setActionFeedback({ type: 'error', message: 'Network error executing rollback.' });
+    } catch {
+      setActionFeedback({ type: 'error', message: 'Network error during rollback.' });
     } finally {
       setActionLoading(false);
     }
@@ -175,16 +281,16 @@ export function App() {
       const res = await fetch('/api/rollback/verify', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        if (data.verified) {
-          setActionFeedback({ type: 'success', message: `Verification PASSED for ${data.version_id}: SHA-256 matches fixed-slice prediction hash.` });
-        } else {
-          setActionFeedback({ type: 'error', message: `Verification FAILED: Hash mismatch on ${data.version_id}.` });
-        }
+        setActionFeedback(
+          data.verified
+            ? { type: 'success', message: `PASS — ${data.version_id} SHA-256 matches fixed-slice hash.` }
+            : { type: 'error', message: `FAIL — Hash mismatch on ${data.version_id}.` }
+        );
       } else {
         setActionFeedback({ type: 'error', message: 'Verification endpoint error.' });
       }
-    } catch (err) {
-      setActionFeedback({ type: 'error', message: 'Failed to verify active model version.' });
+    } catch {
+      setActionFeedback({ type: 'error', message: 'Could not reach verification endpoint.' });
     } finally {
       setActionLoading(false);
     }
@@ -195,173 +301,240 @@ export function App() {
       setActionLoading(true);
       const res = await fetch('/api/drift/run', { method: 'POST' });
       if (res.ok) {
-        setActionFeedback({ type: 'success', message: 'Drift check completed. Report updated.' });
+        setActionFeedback({ type: 'success', message: 'Drift check complete. Report updated.' });
         await fetchData();
       }
-    } catch (err) {
+    } catch {
       setActionFeedback({ type: 'error', message: 'Failed to run drift check.' });
     } finally {
       setActionLoading(false);
     }
   };
 
-  const filteredPredictions = selectedWeek 
-    ? predictionsData.filter(p => p.week_start === selectedWeek)
+  const filteredPredictions = selectedWeek
+    ? predictionsData.filter((p) => p.week_start === selectedWeek)
     : predictionsData.slice(0, 15);
 
-  const chartData = filteredPredictions.map(p => ({
+  const chartData = filteredPredictions.map((p) => ({
     name: p.gateway_id.slice(-6),
-    fullId: p.gateway_id,
     score: p.score,
-    rank: p.rank
+    rank: p.rank,
+    full_id: p.gateway_id,
   }));
 
+  // ── Tab config ───────────────────────────────────────────────────────────────
+  const TABS = [
+    { id: 'predictions', label: 'Prioritized Visits', icon: <Activity size={14} /> },
+    { id: 'registry',    label: 'Model Registry',     icon: <Database size={14} /> },
+    { id: 'rollback',    label: 'Rollback Engine',    icon: <RotateCcw size={14} /> },
+    { id: 'drift',       label: 'Drift Monitor',      icon: <ShieldCheck size={14} /> },
+  ] as const;
+
+  // ── Styles ───────────────────────────────────────────────────────────────────
+  const S = {
+    wrap: {
+      minHeight: '100vh',
+      background: '#06080f',
+      display: 'flex',
+      flexDirection: 'column' as const,
+    },
+    header: {
+      position: 'sticky' as const,
+      top: 0,
+      zIndex: 50,
+      background: 'rgba(6,8,15,0.9)',
+      backdropFilter: 'blur(16px)',
+      borderBottom: '1px solid rgba(255,255,255,0.07)',
+      padding: '14px 28px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    pill: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      padding: '7px 14px',
+      borderRadius: 10,
+      background: '#0c1120',
+      border: '1px solid rgba(255,255,255,0.08)',
+      fontSize: 12,
+      color: '#94a3b8',
+    },
+    main: {
+      flex: 1,
+      maxWidth: 1320,
+      width: '100%',
+      margin: '0 auto',
+      padding: '24px 28px',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: 20,
+    },
+  };
+
+  const driftOk = !driftStatus?.drift_flagged;
+
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
-      {/* Top Navigation */}
-      <header className="glass-panel sticky top-0 z-50 px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
-            <Radio className="w-5 h-5 text-white animate-pulse" />
+    <div style={S.wrap}>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header style={S.header}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {/* Logo mark */}
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #22d3ee, #3b82f6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 18px rgba(34,211,238,0.3)',
+            }}
+          >
+            <Radio size={18} color="#fff" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-              LPDG Gateway Visit Prioritization
-            </h1>
-            <p className="text-xs text-slate-400 font-medium">
-              MLOps Track — Autonomous Network Reliability Platform
-            </p>
+            <div className="gradient-text" style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em' }}>
+              LPDG Gateway Prioritization
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, fontWeight: 500 }}>
+              MLOps Track · Autonomous Network Reliability Platform
+            </div>
           </div>
         </div>
 
-        {/* Global KPI Pills */}
-        <div className="flex items-center gap-3">
-          <div className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2">
-            <Layers className="w-4 h-4 text-blue-400" />
-            <span className="text-xs text-slate-400">ACTIVE:</span>
-            <span className="text-xs font-semibold text-blue-400 font-mono">{activeVersion || 'Loading...'}</span>
-          </div>
-
-          <div className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg flex items-center gap-2">
-            {driftStatus?.drift_flagged ? (
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            )}
-            <span className="text-xs text-slate-400">DRIFT:</span>
-            <span className={`text-xs font-semibold ${driftStatus?.drift_flagged ? 'text-amber-400' : 'text-emerald-400'}`}>
-              {driftStatus?.drift_flagged ? 'FLAGGED' : 'CLEAR'}
+        {/* Right pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={S.pill}>
+            <Layers size={13} color="#22d3ee" />
+            <span style={{ color: '#94a3b8' }}>ACTIVE</span>
+            <span className="font-mono" style={{ color: '#22d3ee', fontWeight: 600, fontSize: 11 }}>
+              {activeVersion || '…'}
             </span>
           </div>
 
-          <button 
-            onClick={fetchData} 
-            className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 transition-colors"
-            title="Refresh Data"
+          <div style={S.pill}>
+            {driftOk
+              ? <CheckCircle2 size={13} color="#10b981" />
+              : <AlertTriangle size={13} color="#f59e0b" />}
+            <span style={{ color: '#94a3b8' }}>DRIFT</span>
+            <span style={{ color: driftOk ? '#10b981' : '#f59e0b', fontWeight: 700, fontSize: 11 }}>
+              {driftOk ? 'CLEAR' : 'FLAGGED'}
+            </span>
+          </div>
+
+          <button
+            onClick={fetchData}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              background: '#0c1120',
+              border: '1px solid rgba(255,255,255,0.08)',
+              cursor: 'pointer',
+              color: '#94a3b8',
+            }}
+            title="Refresh"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-6 flex flex-col gap-6">
-        
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3">
-          <button
-            onClick={() => setActiveTab('predictions')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'predictions'
-                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            Prioritized Visits (15/week)
-          </button>
-
-          <button
-            onClick={() => setActiveTab('registry')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'registry'
-                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            Model Registry
-          </button>
-
-          <button
-            onClick={() => setActiveTab('rollback')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'rollback'
-                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <RotateCcw className="w-4 h-4" />
-            Rollback Engine
-          </button>
-
-          <button
-            onClick={() => setActiveTab('drift')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'drift'
-                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Drift Monitor
-          </button>
+      {/* ── Main ───────────────────────────────────────────────────────────── */}
+      <main style={S.main}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 16 }}>
+          {TABS.map((t) => {
+            const active = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '8px 16px',
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: active ? '1px solid rgba(34,211,238,0.3)' : '1px solid transparent',
+                  background: active ? 'rgba(34,211,238,0.08)' : 'transparent',
+                  color: active ? '#22d3ee' : '#64748b',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Global Feedback Banner */}
+        {/* Feedback Banner */}
         {actionFeedback && (
-          <div className={`p-4 rounded-xl flex items-center justify-between border ${
-            actionFeedback.type === 'success' 
-              ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300' 
-              : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
-          }`}>
-            <div className="flex items-center gap-3">
-              {actionFeedback.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-rose-400" />
-              )}
-              <span className="text-sm font-medium">{actionFeedback.message}</span>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 18px',
+              borderRadius: 12,
+              fontSize: 13,
+              fontWeight: 500,
+              background: actionFeedback.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)',
+              border: `1px solid ${actionFeedback.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}`,
+              color: actionFeedback.type === 'success' ? '#10b981' : '#f43f5e',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {actionFeedback.type === 'success'
+                ? <CheckCircle2 size={16} />
+                : <AlertTriangle size={16} />}
+              {actionFeedback.message}
             </div>
-            <button 
+            <button
               onClick={() => setActionFeedback(null)}
-              className="text-xs opacity-75 hover:opacity-100 uppercase tracking-wider font-semibold"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 11, opacity: 0.7, fontWeight: 600, letterSpacing: '0.05em' }}
             >
-              Dismiss
+              DISMISS
             </button>
           </div>
         )}
 
-        {/* TAB 1: PREDICTIONS */}
+        {/* ── TAB 1: PREDICTIONS ─────────────────────────────────────────── */}
         {activeTab === 'predictions' && (
-          <div className="flex flex-col gap-6">
-            {/* Week Selector Bar & Export */}
-            <div className="glass-panel p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">
-                  Scored Week:
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Week selector */}
+            <div className="surface" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 4 }}>
+                  Week:
                 </span>
-                {availableWeeks.map(week => (
+                {availableWeeks.map((w) => (
                   <button
-                    key={week}
-                    onClick={() => setSelectedWeek(week)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      selectedWeek === week
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-semibold'
-                        : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
-                    }`}
+                    key={w}
+                    onClick={() => setSelectedWeek(w)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: selectedWeek === w ? '1px solid rgba(34,211,238,0.45)' : '1px solid rgba(255,255,255,0.07)',
+                      background: selectedWeek === w ? 'rgba(34,211,238,0.12)' : '#111827',
+                      color: selectedWeek === w ? '#22d3ee' : '#94a3b8',
+                      transition: 'all 0.15s',
+                    }}
                   >
-                    {week}
+                    {w}
                   </button>
                 ))}
               </div>
@@ -369,108 +542,162 @@ export function App() {
               <a
                 href="/api/predictions/download"
                 download="predictions.csv"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-white transition-colors border border-slate-700"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '8px 16px',
+                  borderRadius: 9,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  background: '#111827',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#f0f4ff',
+                  transition: 'background 0.15s',
+                }}
               >
-                <Download className="w-4 h-4 text-blue-400" />
-                Export predictions.csv (120 rows)
+                <Download size={13} color="#22d3ee" />
+                Export predictions.csv
               </a>
             </div>
 
-            {/* Top Score Chart */}
-            <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+            {/* Bar chart */}
+            <div className="surface" style={{ padding: '20px 22px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-200">Top 15 Gateway Anomaly Scores</h3>
-                  <p className="text-xs text-slate-400">Flagged hours beyond 3σ baseline in trailing 7 days</p>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f4ff' }}>Top 15 Gateway Anomaly Scores</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>Flagged hours beyond 3σ baseline · trailing 7 days</div>
                 </div>
-                <div className="text-xs text-slate-400 font-mono">
-                  Week of {selectedWeek}
+                <div className="font-mono" style={{ fontSize: 11, color: '#94a3b8', background: '#0c1120', padding: '5px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.08)' }}>
+                  {selectedWeek}
                 </div>
               </div>
 
-              <div className="h-56 w-full pt-2">
+              <div style={{ height: 220 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
-                      formatter={(val: number) => [`${val} flagged hours`, 'Score']}
-                      labelFormatter={(label) => `Gateway: ...${label}`}
+                  <BarChart data={chartData} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      stroke="rgba(255,255,255,0.0)"
+                      tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+                      tickLine={false}
+                      axisLine={false}
                     />
-                    <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                      {chartData.map((_, idx) => (
-                        <Cell 
-                          key={`cell-${idx}`} 
-                          fill={idx === 0 ? '#ef4444' : idx < 5 ? '#f97316' : '#3b82f6'} 
+                    <YAxis
+                      stroke="rgba(255,255,255,0.0)"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      content={<CustomTooltip />}
+                      cursor={false}
+                      contentStyle={{
+                        backgroundColor: '#0c1120',
+                        borderColor: 'rgba(34, 211, 238, 0.35)',
+                        borderRadius: 10,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+                        color: '#ffffff',
+                      }}
+                      itemStyle={{
+                        color: '#22d3ee',
+                        fontWeight: 700,
+                        fontSize: 14,
+                      }}
+                      labelStyle={{
+                        color: '#cbd5e1',
+                        fontWeight: 700,
+                        fontSize: 12,
+                      }}
+                      formatter={(val: number) => [`${val.toFixed(1)} flagged hrs`, 'Score']}
+                      labelFormatter={(label) => `Gateway …${label}`}
+                    />
+                    <Bar dataKey="score" radius={[5, 5, 0, 0]} maxBarSize={36}>
+                      {chartData.map((entry, idx) => (
+                        <Cell
+                          key={`cell-${idx}`}
+                          fill={
+                            entry.rank === 1
+                              ? '#f43f5e'
+                              : entry.rank <= 3
+                              ? '#f97316'
+                              : entry.rank <= 5
+                              ? '#f59e0b'
+                              : '#22d3ee'
+                          }
                         />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: 18, marginTop: 12 }}>
+                {[
+                  { color: '#f43f5e', label: 'Critical (#1)' },
+                  { color: '#f97316', label: 'High (#2–3)' },
+                  { color: '#f59e0b', label: 'Elevated (#4–5)' },
+                  { color: '#22d3ee', label: 'Monitored (#6–15)' },
+                ].map(({ color, label }) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
+                    <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Ranked Table */}
-            <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800">
-              <div className="px-5 py-4 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-200">
-                  Recommended Site Visits (Ranked 1 to 15)
-                </h3>
-                <span className="text-xs text-slate-400 font-medium">
-                  Hard Cap: Exactly 15 sites per week
-                </span>
+            {/* Ranked table */}
+            <div className="surface" style={{ overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f4ff' }}>
+                  Recommended Site Visits — Ranked 1 to 15
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Hard cap: exactly 15 visits / week</div>
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table">
+                  <thead>
                     <tr>
-                      <th className="py-3 px-4 w-16">Rank</th>
-                      <th className="py-3 px-4">Gateway ID</th>
-                      <th className="py-3 px-4">Location / Site</th>
-                      <th className="py-3 px-4">Hardware</th>
-                      <th className="py-3 px-4">Meters</th>
-                      <th className="py-3 px-4">Score</th>
-                      <th className="py-3 px-4">Operations Rationale</th>
+                      <th style={{ width: 56 }}>Rank</th>
+                      <th>Gateway ID</th>
+                      <th>Site / Region</th>
+                      <th>Hardware</th>
+                      <th>Meters</th>
+                      <th>Score</th>
+                      <th>Operational Rationale</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tbody>
                     {filteredPredictions.map((p) => (
-                      <tr key={`${p.week_start}-${p.rank}`} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
-                            p.rank === 1 
-                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
-                              : p.rank <= 3 
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
-                              : 'bg-slate-800 text-slate-300'
-                          }`}>
+                      <tr key={`${p.week_start}-${p.rank}`}>
+                        <td>
+                          <span className={p.rank === 1 ? 'rank-1' : p.rank <= 3 ? 'rank-top' : 'rank-normal'}>
                             {p.rank}
                           </span>
                         </td>
-                        <td className="py-3 px-4 font-mono font-semibold text-blue-400">
-                          {p.gateway_id}
+                        <td>
+                          <span className="font-mono" style={{ color: '#22d3ee', fontWeight: 600, fontSize: 12 }}>
+                            {p.gateway_id}
+                          </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-slate-200">{p.site_type || 'Unknown'}</span>
-                            <span className="text-[11px] text-slate-500">{p.region || '—'}</span>
-                          </div>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: 12 }}>{p.site_type || 'Unknown'}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{p.region || '—'}</div>
                         </td>
-                        <td className="py-3 px-4 text-slate-300">
-                          {p.hw_model || '—'}
+                        <td style={{ color: '#94a3b8', fontSize: 12 }}>{p.hw_model || '—'}</td>
+                        <td style={{ color: '#94a3b8', fontSize: 12 }}>
+                          {p.n_meters_installed ? `${p.n_meters_installed} m` : '—'}
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-300">
-                          {p.n_meters_installed ? `${p.n_meters_installed} meters` : '—'}
+                        <td>
+                          <span className="font-mono" style={{ color: '#f59e0b', fontWeight: 800, fontSize: 13 }}>
+                            {p.score.toFixed(1)}
+                          </span>
                         </td>
-                        <td className="py-3 px-4 font-bold font-mono text-amber-400">
-                          {p.score.toFixed(1)}
-                        </td>
-                        <td className="py-3 px-4 text-slate-400 max-w-md">
-                          {p.reason}
-                        </td>
+                        <td style={{ color: '#94a3b8', fontSize: 12, maxWidth: 340, lineHeight: 1.5 }}>{p.reason}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -480,85 +707,91 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 2: MODEL REGISTRY */}
+        {/* ── TAB 2: MODEL REGISTRY ──────────────────────────────────────── */}
         {activeTab === 'registry' && (
-          <div className="flex flex-col gap-6">
-            <div className="glass-panel p-6 rounded-2xl flex flex-col gap-4">
-              <div>
-                <h2 className="text-base font-bold text-white">Model Registry & Versions</h2>
-                <p className="text-xs text-slate-400">
-                  Versioned JSON model artifacts with content signatures and deterministic scoring parameters.
-                </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <SectionTitle
+              icon={<Database size={18} color="#22d3ee" />}
+              title="Model Registry & Versions"
+              sub="Versioned JSON artifacts with content signatures and deterministic scoring parameters."
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+              <StatCard
+                icon={<Database size={20} color="#22d3ee" />}
+                label="Registered Versions"
+                value={registryVersions.length}
+                accent="#22d3ee"
+              />
+              <StatCard
+                icon={<CheckCircle2 size={20} color="#10b981" />}
+                label="Active Production"
+                value={
+                  <span className="font-mono" style={{ fontSize: 13, color: '#10b981' }}>
+                    {activeVersion || '—'}
+                  </span>
+                }
+                accent="#10b981"
+              />
+              <StatCard
+                icon={<Cpu size={20} color="#6366f1" />}
+                label="Scoring Architecture"
+                value={<span style={{ fontSize: 13 }}>Rule-based 3σ Anomaly</span>}
+                accent="#6366f1"
+              />
+              <StatCard
+                icon={<TrendingUp size={20} color="#f59e0b" />}
+                label="Rollback Events"
+                value={rollbackLogs.length}
+                accent="#f59e0b"
+              />
+            </div>
+
+            <div className="surface" style={{ overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#f0f4ff' }}>All Registered Versions</div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="glass-card p-4 rounded-xl flex items-center gap-3">
-                  <Database className="w-8 h-8 text-blue-400" />
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium">Registered Versions</div>
-                    <div className="text-xl font-bold text-white">{registryVersions.length}</div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-4 rounded-xl flex items-center gap-3">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium">Active Production Model</div>
-                    <div className="text-sm font-bold text-emerald-400 font-mono">{activeVersion}</div>
-                  </div>
-                </div>
-
-                <div className="glass-card p-4 rounded-xl flex items-center gap-3">
-                  <ShieldCheck className="w-8 h-8 text-indigo-400" />
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium">Scoring Architecture</div>
-                    <div className="text-sm font-bold text-indigo-300">Rule-based 3-Sigma Anomaly</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Version Table */}
-              <div className="overflow-x-auto rounded-xl border border-slate-800 mt-2">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table">
+                  <thead>
                     <tr>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Version ID</th>
-                      <th className="py-3 px-4">Trained Date</th>
-                      <th className="py-3 px-4">Model Type</th>
-                      <th className="py-3 px-4">Parameters (σ, days)</th>
-                      <th className="py-3 px-4">Training Hash</th>
+                      <th>Status</th>
+                      <th>Version ID</th>
+                      <th>Trained</th>
+                      <th>Model Type</th>
+                      <th>σ / Window</th>
+                      <th>Training Hash</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    {registryVersions.map(v => (
-                      <tr key={v.version_id} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4">
+                  <tbody>
+                    {registryVersions.map((v) => (
+                      <tr key={v.version_id}>
+                        <td>
                           {v.is_active ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold text-[11px] border border-emerald-500/30">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                            <span className="badge-active">
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />
                               ACTIVE
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 font-medium text-[11px]">
-                              Archived
-                            </span>
+                            <span className="badge-archived">Archived</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 font-mono font-bold text-blue-400">
-                          {v.version_id}
+                        <td>
+                          <span className="font-mono" style={{ color: '#22d3ee', fontWeight: 700, fontSize: 12 }}>
+                            {v.version_id}
+                          </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-300">
-                          {v.trained_at?.slice(0, 10)}
+                        <td style={{ color: '#94a3b8', fontSize: 12 }}>{v.trained_at?.slice(0, 10)}</td>
+                        <td style={{ color: '#94a3b8', fontSize: 12 }}>{v.model_type}</td>
+                        <td>
+                          <span className="font-mono" style={{ color: '#94a3b8', fontSize: 11 }}>
+                            σ={v.parameters?.sigma ?? 3.0}  ·  {v.parameters?.baseline_days ?? 28}d
+                          </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-300 font-medium">
-                          {v.model_type}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-slate-400">
-                          σ={v.parameters?.sigma || 3.0}, {v.parameters?.baseline_days || 28}d baseline
-                        </td>
-                        <td className="py-3 px-4 font-mono text-slate-500 text-[11px]">
-                          {v.training_data_hash?.slice(0, 16)}...
+                        <td>
+                          <span className="font-mono" style={{ color: '#94a3b8', fontSize: 11 }}>
+                            {v.training_data_hash?.slice(0, 18)}…
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -569,122 +802,108 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 3: ROLLBACK ENGINE */}
+        {/* ── TAB 3: ROLLBACK ENGINE ─────────────────────────────────────── */}
         {activeTab === 'rollback' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Action Form */}
-            <div className="lg:col-span-1 glass-panel p-6 rounded-2xl flex flex-col gap-4">
-              <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <RotateCcw className="w-5 h-5 text-blue-400" />
-                  Rollback Controller
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Perform atomic zero-downtime version swaps with cryptographic output verification.
-                </p>
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20 }}>
+            {/* Action form */}
+            <div className="surface" style={{ padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <SectionTitle
+                icon={<RotateCcw size={17} color="#22d3ee" />}
+                title="Rollback Controller"
+                sub="Zero-downtime version swaps with cryptographic verification."
+              />
 
-              <form onSubmit={handleRollback} className="flex flex-col gap-4 mt-2">
+              <form onSubmit={handleRollback} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    Select Target Version:
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 7 }}>
+                    Target Version
                   </label>
                   <select
                     value={targetVersion}
                     onChange={(e) => setTargetVersion(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="field font-mono"
                     required
                   >
-                    <option value="">-- Choose Version --</option>
-                    {registryVersions.map(v => (
+                    <option value="">— Select version —</option>
+                    {registryVersions.map((v) => (
                       <option key={v.version_id} value={v.version_id}>
-                        {v.version_id} {v.is_active ? '(Currently ACTIVE)' : ''}
+                        {v.version_id}{v.is_active ? ' (ACTIVE)' : ''}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    Rollback Reason (Audit Log Entry):
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 7 }}>
+                    Audit Reason
                   </label>
                   <textarea
                     value={rollbackReason}
                     onChange={(e) => setRollbackReason(e.target.value)}
                     rows={3}
-                    placeholder="e.g. Version regressed on validation slice / degraded hit rate..."
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                    placeholder="e.g. v2 regressed on validation slice — hit rate dropped 8 pp"
+                    className="field"
                     required
                   />
                 </div>
 
-                <div className="flex flex-col gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={actionLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
-                  >
-                    {actionLoading ? 'Executing Rollback...' : 'Execute Rollback & Update ACTIVE'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, paddingTop: 4 }}>
+                  <button type="submit" disabled={actionLoading} className="btn-primary">
+                    {actionLoading ? 'Executing…' : 'Execute Rollback'}
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={handleVerify}
-                    disabled={actionLoading}
-                    className="w-full py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all border border-slate-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                    Verify Output Hash Match
+                  <button type="button" onClick={handleVerify} disabled={actionLoading} className="btn-ghost">
+                    <ShieldCheck size={14} color="#6366f1" />
+                    Verify Hash Match
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Audit Log Table */}
-            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl flex flex-col gap-4">
-              <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-400" />
-                  Rollback Audit Trail (models/rollback_log.jsonl)
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Immutable, append-only log recording every historical version transition with operator reason.
-                </p>
+            {/* Audit log */}
+            <div className="surface" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <FileText size={16} color="#6366f1" />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#f0f4ff' }}>Rollback Audit Trail</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>models/rollback_log.jsonl — append-only</div>
+                </div>
               </div>
-
-              <div className="overflow-x-auto rounded-xl border border-slate-800">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+              <div style={{ overflowX: 'auto', flex: 1 }}>
+                <table className="data-table">
+                  <thead>
                     <tr>
-                      <th className="py-3 px-4">Timestamp (UTC)</th>
-                      <th className="py-3 px-4">From</th>
-                      <th className="py-3 px-4">To</th>
-                      <th className="py-3 px-4">Reason</th>
+                      <th>Timestamp (UTC)</th>
+                      <th>From</th>
+                      <th>To</th>
+                      <th>Reason</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tbody>
                     {rollbackLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-6 text-center text-slate-500 font-medium">
+                        <td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '32px 0', fontStyle: 'italic' }}>
                           No rollback events recorded yet.
                         </td>
                       </tr>
                     ) : (
                       rollbackLogs.map((log, idx) => (
-                        <tr key={idx} className="hover:bg-slate-800/40">
-                          <td className="py-3 px-4 font-mono text-slate-400">
-                            {log.timestamp?.replace('T', ' ').slice(0, 19)}
+                        <tr key={idx}>
+                          <td>
+                            <span className="font-mono" style={{ color: '#64748b', fontSize: 11 }}>
+                              {log.timestamp?.replace('T', ' ').slice(0, 19)}
+                            </span>
                           </td>
-                          <td className="py-3 px-4 font-mono text-rose-400 font-medium">
-                            {log.from_version}
+                          <td>
+                            <span className="font-mono" style={{ color: '#f43f5e', fontWeight: 600, fontSize: 12 }}>
+                              {log.from_version}
+                            </span>
                           </td>
-                          <td className="py-3 px-4 font-mono text-emerald-400 font-bold">
-                            {log.to_version}
+                          <td>
+                            <span className="font-mono" style={{ color: '#10b981', fontWeight: 700, fontSize: 12 }}>
+                              {log.to_version}
+                            </span>
                           </td>
-                          <td className="py-3 px-4 text-slate-300">
-                            {log.reason}
-                          </td>
+                          <td style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>{log.reason}</td>
                         </tr>
                       ))
                     )}
@@ -695,108 +914,111 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 4: DRIFT MONITOR */}
+        {/* ── TAB 4: DRIFT MONITOR ───────────────────────────────────────── */}
         {activeTab === 'drift' && (
-          <div className="flex flex-col gap-6">
-            <div className="glass-panel p-6 rounded-2xl flex flex-col gap-6">
-              <div className="flex items-center justify-between flex-wrap gap-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+              <SectionTitle
+                icon={<ShieldCheck size={18} color={driftOk ? '#10b981' : '#f59e0b'} />}
+                title="Drift Detection & Data Integrity"
+                sub="Pre-inference checking of telemetry for schema, population, and distribution anomalies."
+              />
+              <button onClick={handleTriggerDrift} disabled={actionLoading} className="btn-primary" style={{ flexShrink: 0 }}>
+                <RefreshCw size={13} style={{ animation: actionLoading ? 'spin 1s linear infinite' : 'none' }} />
+                Run Drift Check
+              </button>
+            </div>
+
+            {/* Status banner */}
+            <div
+              style={{
+                padding: '18px 22px',
+                borderRadius: 14,
+                border: `1px solid ${driftOk ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                background: driftOk ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 14,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {driftOk
+                  ? <CheckCircle2 size={32} color="#10b981" />
+                  : <AlertTriangle size={32} color="#f59e0b" />}
                 <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                    Drift Detection & Data Integrity
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Continuous pre-inference checking of incoming telemetry for schema, population, and distribution anomalies.
-                  </p>
-                </div>
-
-                <button
-                  onClick={handleTriggerDrift}
-                  disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all flex items-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${actionLoading ? 'animate-spin' : ''}`} />
-                  Run Drift Check Now
-                </button>
-              </div>
-
-              {/* Status Banner */}
-              <div className={`p-5 rounded-xl border flex items-center justify-between flex-wrap gap-4 ${
-                driftStatus?.drift_flagged 
-                  ? 'bg-amber-950/30 border-amber-500/30 text-amber-300' 
-                  : 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300'
-              }`}>
-                <div className="flex items-center gap-4">
-                  {driftStatus?.drift_flagged ? (
-                    <AlertTriangle className="w-8 h-8 text-amber-400" />
-                  ) : (
-                    <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  <div style={{ fontSize: 15, fontWeight: 800, color: driftOk ? '#10b981' : '#f59e0b' }}>
+                    {driftOk ? 'SYSTEM HEALTHY — NO DRIFT DETECTED' : 'DRIFT FLAGGED'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                    {driftStatus?.summary || 'All schemas, IDs, and distributions within expected bounds.'}
+                  </div>
+                  {driftStatus?.checked_at && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
+                      Last checked: {driftStatus.checked_at.replace('T', ' ').slice(0, 19)} UTC
+                    </div>
                   )}
-                  <div>
-                    <div className="text-sm font-bold">
-                      {driftStatus?.drift_flagged ? 'DRIFT FLAGGED' : 'SYSTEM HEALTHY — NO DRIFT DETECTED'}
-                    </div>
-                    <div className="text-xs opacity-80 mt-0.5">
-                      {driftStatus?.summary || 'All schemas, gateway IDs, and metric distributions within expected bounds.'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 flex items-center gap-3 text-xs">
-                  <span className="text-slate-400">Consecutive Flagged Weeks:</span>
-                  <span className="font-bold text-white text-sm font-mono">{consecutiveDriftWeeks} / 3</span>
-                  <span className="text-[11px] text-slate-500">(3 triggers retrain)</span>
                 </div>
               </div>
 
-              {/* Check Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="glass-card p-4 rounded-xl">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    Schema Invariants
-                  </div>
-                  <div className="text-sm font-bold text-emerald-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    All Required Columns Present
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Normalized against 57 telemetry columns & asset registry.
-                  </p>
+              <div style={{ textAlign: 'center', padding: '10px 20px', borderRadius: 10, background: '#0c1120', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Consecutive Flags
                 </div>
-
-                <div className="glass-card p-4 rounded-xl">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    Gateway Population
-                  </div>
-                  <div className="text-sm font-bold text-emerald-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Population Stability: 100%
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Known gateway count verified with training reference.
-                  </p>
+                <div className="font-mono" style={{ fontSize: 28, fontWeight: 800, color: consecutiveDriftWeeks >= 3 ? '#f43f5e' : '#f0f4ff', marginTop: 4 }}>
+                  {consecutiveDriftWeeks}<span style={{ fontSize: 16, color: '#94a3b8' }}>/3</span>
                 </div>
-
-                <div className="glass-card p-4 rounded-xl">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    Distribution Range
-                  </div>
-                  <div className="text-sm font-bold text-emerald-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Metric Bounds Normal (&lt;5× max)
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    No extreme sensor dropouts or erroneous readings.
-                  </p>
-                </div>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>triggers retrain</div>
               </div>
+            </div>
+
+            {/* Check detail cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+              {[
+                {
+                  title: 'Schema Invariants',
+                  ok: !driftStatus?.missing_columns?.length && !driftStatus?.new_columns?.length,
+                  detail: driftStatus?.missing_columns?.length
+                    ? `Missing: ${driftStatus.missing_columns.join(', ')}`
+                    : 'All 57 telemetry columns present.',
+                },
+                {
+                  title: 'Gateway Population',
+                  ok: (driftStatus?.new_gateway_id_pct ?? 0) < 0.05,
+                  detail:
+                    driftStatus?.new_gateway_id_pct
+                      ? `${(driftStatus.new_gateway_id_pct * 100).toFixed(1)}% new IDs (threshold: 5%)`
+                      : 'Population stable. Known gateway count verified.',
+                },
+                {
+                  title: 'Distribution Range',
+                  ok: driftOk,
+                  detail: driftOk
+                    ? 'All metric values within 5× training maximum.'
+                    : 'One or more metrics exceed 5× historical maximum.',
+                },
+              ].map(({ title, ok, detail }) => (
+                <div key={title} className="card-subtle" style={{ padding: '18px 20px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
+                    {title}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: ok ? '#10b981' : '#f59e0b' }}>
+                    {ok ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                    {ok ? 'Normal' : 'Anomaly Detected'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 8, lineHeight: 1.6 }}>{detail}</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
+      </main>
 
-      </div>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+      `}</style>
     </div>
   );
 }
-
-export default App;
