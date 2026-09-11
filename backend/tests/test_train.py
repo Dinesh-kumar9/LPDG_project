@@ -341,3 +341,49 @@ def test_write_model_artifact_atomic_no_duplicate(real_data_dir, temp_models_dir
         write_model_artifact(
             telemetry=telemetry, models_dir=temp_models_dir, version_name="test_dup", sigma=3.0
         )
+
+
+def test_rollback_verify_passes_for_freshly_trained_artifact(
+    real_data_dir, temp_models_dir
+):
+    """
+    Regression test for the train/rollback serialization mismatch bug.
+
+    WHAT THIS CATCHES:
+      If train.py ever uses a different CSV serialization than rollback.py verify,
+      the stored fixed_slice_prediction_hash and the re-computed hash will differ
+      and this test will fail BEFORE it reaches production/Docker.
+
+    HOW:
+      1. Train a fresh artifact with write_model_artifact() -- this stores the hash.
+      2. Call rollback.verify() on the same data -- this re-computes the hash.
+      3. Assert verify() returns True (PASS).
+
+    This is the same code path Docker runs:
+      python -m src.rollback verify --data /app/data --version <ver>
+    """
+    from src.rollback import verify
+
+    telemetry = load_telemetry(real_data_dir)
+    artifact_path = write_model_artifact(
+        telemetry=telemetry,
+        models_dir=temp_models_dir,
+        version_name="test_verify_regression",
+        sigma=3.0,
+        promote=True,
+    )
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    stored_hash = artifact["fixed_slice_prediction_hash"]
+
+    # Must pass -- train-time hash == rollback verify hash.
+    result = verify(
+        data_dir=real_data_dir,
+        version_id=artifact["version_id"],
+        models_dir=temp_models_dir,
+    )
+    assert result is True, (
+        f"rollback.verify() returned False -- train/verify serialization mismatch!\n"
+        f"Stored hash   : {stored_hash}\n"
+        f"(Check that _serialize_predictions_canonical is used by both "
+        f"compute_verify_hash in train.py AND verify() in rollback.py)"
+    )
