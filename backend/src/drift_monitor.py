@@ -59,6 +59,12 @@ class DriftReport:
     # Value drift (metric extremes)
     out_of_range_metrics: dict[str, list[str]] = field(default_factory=dict)
 
+    # Gone-quiet gateways (known at training time, zero rows in recent window)
+    # These do NOT set drift_flagged — they are advisory for human review.
+    # See DECISIONS.md ADR 0009 and FAQ 7.1.
+    silent_gateways: list[str] = field(default_factory=list)
+    silent_gateway_count: int = 0
+
     # Result
     drift_flagged: bool = False
     summary: str = "No drift detected."
@@ -82,6 +88,10 @@ MONITORED_METRICS: list[str] = [
     "disconnection_cnt",
     "reboot_cnt",
 ]
+
+# Trailing window used to detect gone-quiet gateways — matches predict.py's
+# DEFAULT_RECENT_DAYS so the check is consistent with the scoring boundary.
+SILENT_GATEWAY_RECENT_DAYS: int = 7
 
 
 # ─── Drift checks ─────────────────────────────────────────────────────────────
@@ -206,6 +216,54 @@ def _check_value_ranges(
         )
 
 
+def _check_silent_gateways(
+    new_df: pd.DataFrame,
+    reference_version_artifact: dict,  # type: ignore[type-arg]
+    report: DriftReport,
+) -> None:
+    """
+    Identify gateways that are known (appeared in training) but produced
+    zero telemetry rows in the trailing SILENT_GATEWAY_RECENT_DAYS window.
+
+    WHY this is not caught by 3-sigma scoring (FAQ 7.1):
+      rank_week() scores only hours that EXIST in the recent window.
+      A gateway with zero rows contributes nothing to the flagged_hours sum
+      and scores 0. It silently falls below rank 15 — the highest-urgency
+      failure case (a dead gateway costs €600/week) is structurally invisible
+      to the baseline. See DECISIONS.md ADR 0009.
+
+    WHY we log rather than inject a score:
+      Total silence is ambiguous: hardware death, data pipeline failure, or
+      an unnotified decommission are all possible. Fabricating a score treats
+      all three identically. Surfacing the list lets a human with operational
+      context decide. FAQ 7.1 bar: not 'in the top 15' but 'you noticed it'.
+
+    DOES NOT set drift_flagged — silent gateways are an operational advisory,
+    not a data quality signal that should block prediction or increment the
+    consecutive-flag counter toward the retrain threshold.
+    """
+    known_ids = set(reference_version_artifact.get("known_gateway_ids", []))
+    if not known_ids or "ts" not in new_df.columns:
+        return
+
+    cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=SILENT_GATEWAY_RECENT_DAYS)
+    recent_ids = set(new_df[new_df["ts"] >= cutoff]["gateway_id"].unique())
+
+    silent = sorted(known_ids - recent_ids)
+    report.silent_gateways = silent
+    report.silent_gateway_count = len(silent)
+
+    if silent:
+        preview = silent[:5]
+        ellipsis = "..." if len(silent) > 5 else ""
+        print(
+            f"[WARN] {len(silent)} known gateway(s) produced zero telemetry "
+            f"in the last {SILENT_GATEWAY_RECENT_DAYS} days — they score 0 "
+            "and cannot reach the top-15. Check drift report 'silent_gateways' "
+            f"field. First five: {preview}{ellipsis}"
+        )
+
+
 # ─── Consecutive drift counter ────────────────────────────────────────────────
 
 
@@ -265,6 +323,9 @@ def run_drift_check(
         _check_gateway_population(new_telemetry, artifact, report)
     if not report.drift_flagged:
         _check_value_ranges(new_telemetry, artifact, report)
+    # Silent-gateway check runs regardless of other flags — it is an orthogonal
+    # operational advisory and must not be suppressed by a schema/range flag.
+    _check_silent_gateways(new_telemetry, artifact, report)
 
     # Write dated report
     date_str = dt.date.today().isoformat()

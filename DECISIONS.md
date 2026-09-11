@@ -176,3 +176,37 @@ A global std conflates gateways with very different failure modes: a rural rooft
 ### Consequences
 - **Positive:** New gateway exclusion is auditable via log output. No spurious flags on gateways whose behavior is not yet characterized. NaN scores cannot appear in output.
 - **Negative:** A genuinely faulty new gateway that fails within its first 24 hours will not be captured until it accumulates sufficient history. This is an acceptable operational trade-off documented here.
+
+---
+
+## ADR 0009: Gone-Quiet Gateways — Explicit Drift-Report Logging Rather Than Score Injection
+
+### Context
+The 3-sigma scoring model has a structural blind spot identified during submission review (FAQ 7.1): a gateway that goes completely silent — zero telemetry rows in the recent 7-day scoring window — contributes zero flagged hours, scores 0, and falls below rank 15. It cannot reach the top 15 by any mechanism within the current model.
+
+This is the highest-urgency failure case in the entire problem: a completely dead gateway costs **€600/week** in unread meters. FAQ 7.1 states directly: *"A gateway that has gone quiet should not crash your pipeline or silently disappear from your ranking without you noticing."*
+
+The existing `_check_gateway_population()` already computes `missing_gateway_ids` (gateways absent from the full telemetry directory). However it does not catch the real scenario: a gateway present in historical months but silent in the last 7 days — the parquet directory still contains it, so `known_ids - new_ids = ∅`. A separate recent-window check is required.
+
+### Decision
+Add `_check_silent_gateways()` to `src/drift_monitor.py`. For every `known_gateway_id` with zero rows in the last `SILENT_GATEWAY_RECENT_DAYS = 7` days, add it to a `silent_gateways` list in the `DriftReport` and log a `[WARN]` line to stdout. Surface the list via `GET /api/drift/status`.
+
+This check does **NOT** set `drift_flagged = True`. It is advisory only — an operational signal for human review, not a data quality signal that should block prediction or increment the consecutive-flag retrain counter.
+
+### Alternative Considered
+**Score injection** — assign a fabricated maximum score to all silent gateways and force them into the top-15 ranking, treating total silence as the worst possible anomaly.
+
+### Why Rejected
+Total silence is operationally ambiguous. A gateway with zero recent rows could be:
+1. **Hardware death** (power failure, antenna fault) — urgent, send a visit
+2. **Data pipeline failure** (gateway is alive, telemetry not reaching the store) — a visit finds nothing wrong and wastes €380
+3. **Silent decommission** (gateway removed, asset register not updated) — another wasted slot
+
+Score injection treats all three identically. An operator with local knowledge can distinguish them; an algorithm cannot. FAQ 7.1's bar is *"without you noticing"* — not *"automatically in the top 15"*. The logging clears that bar without fabricating a score.
+
+### Consequences
+- **Positive:** FAQ 7.1 requirement satisfied. Gone-quiet gateways cannot disappear without being noticed. They appear in every drift report and API response (`GET /api/drift/status`).
+- **Positive:** `drift_flagged` and the retrain counter are not affected. A batch with silent gateways is not inherently a data quality problem.
+- **Positive:** The `silent_gateways` list gives the operations team an explicit "no recent telemetry" work queue — actionable without changing the scoring model.
+- **Negative:** Silent gateways do not appear in `predictions.csv`. If asked "why isn't gateway X in the top 15?", the answer is: "zero telemetry in the last 7 days — check the drift report's `silent_gateways` field."
+- **Negative:** The cutoff uses `pd.Timestamp.now(tz="UTC")`, anchored to when the drift monitor runs, not the prediction week boundary. Acceptable — the monitor is always run immediately before prediction.
