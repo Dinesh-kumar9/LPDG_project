@@ -28,13 +28,12 @@ import datetime as dt
 import json
 import pathlib
 import sys
-import tempfile
 
 from src.load import load_telemetry
 from src.train import (
     MODELS_DIR,
     VERIFY_SLICE_DATE,
-    _hash_predictions_csv,
+    _hash_predictions_canonical,
     load_model_artifact,
     score_all_weeks,
 )
@@ -204,16 +203,9 @@ def verify(
         recent_days=int(params["recent_days"]),
     )
 
-    # Write to a temp file and hash it.
-    with tempfile.NamedTemporaryFile(
-        suffix=".csv", delete=False, mode="w", encoding="utf-8"
-    ) as tmp:
-        tmp_path = pathlib.Path(tmp.name)
-        predictions.to_csv(tmp_path, index=False, float_format="%.1f")
-
-    computed_hash = _hash_predictions_csv(tmp_path)
-    tmp_path.unlink()
-
+    # Use the canonical hash path — same function as training and predict.py.
+    # This is what makes training hash == rollback verify hash.
+    computed_hash = _hash_predictions_canonical(predictions)
     print(f"Computed hash: {computed_hash}")
 
     if computed_hash == expected_hash:

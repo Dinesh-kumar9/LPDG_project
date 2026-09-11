@@ -27,6 +27,7 @@ from src.load import load_telemetry
 from src.train import (
     MODELS_DIR,
     _hash_predictions_csv,
+    _serialize_predictions_canonical,
     load_model_artifact,
     score_all_weeks,
 )
@@ -78,19 +79,12 @@ def predict(
         recent_days=int(params["recent_days"]),
     )
 
-    # Sort deterministically: score descending, gateway_id ascending as tiebreak.
-    # This guarantees byte-identical output even if upstream sort is unstable.
-    predictions = predictions.sort_values(
-        ["week_start", "score", "gateway_id"],
-        ascending=[True, False, True],
-    ).reset_index(drop=True)
-
-    # Recompute rank after deterministic sort (score_all_weeks already does this,
-    # but we re-derive here as a safety net for tiebreak ordering).
-    predictions["rank"] = predictions.groupby("week_start").cumcount() + 1
-
+    # Write CSV using the canonical serialization — the same bytes that
+    # _hash_predictions_canonical() hashes, ensuring the file on disk is
+    # byte-for-byte consistent with the stored fixed_slice_prediction_hash.
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    predictions.to_csv(out_path, index=False, float_format="%.1f")
+    canonical_bytes = _serialize_predictions_canonical(predictions)
+    out_path.write_bytes(canonical_bytes)
 
     row_count = len(predictions)
     week_count = predictions["week_start"].nunique()

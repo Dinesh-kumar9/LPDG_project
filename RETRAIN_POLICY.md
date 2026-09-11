@@ -1,5 +1,5 @@
-# Retrain Policy — LPDG Gateway Prioritization
-**LPDG Innovation Hub Selection Challenge 2026 — MLOps Track**
+﻿# Retrain Policy â€” LPDG Gateway Prioritization
+**LPDG Innovation Hub Selection Challenge 2026 â€” MLOps Track**
 
 ---
 
@@ -10,7 +10,7 @@ Model retraining is an operational decision that consumes computational resource
 **Core Policy Invariants:**
 1. Retraining is triggered by objective criteria, but promotion to `ACTIVE` is gated by validation.
 2. The drift monitor informs retraining; it **never** triggers retraining automatically.
-3. Every retrained model must pass the €380/€600 economic validation gate before promotion.
+3. Every retrained model must pass the â‚¬380/â‚¬600 economic validation gate before promotion.
 
 ---
 
@@ -23,24 +23,56 @@ Retraining is scheduled under either of two conditions:
 - **Rationale:** Transient single-week spikes (e.g. temporary regional weather events, cellular base-station maintenance) should not invalidate the model. Three consecutive weeks indicate structural changes in gateway telemetry behavior or network topology.
 
 ### Trigger B: Ground-Truth Accumulation (Cadence-Driven)
-- **Condition:** Monthly cadence, or upon receipt of **≥50 newly resolved field visit outcomes** in `field_visits.csv`.
+- **Condition:** Monthly cadence, or upon receipt of **â‰¥50 newly resolved field visit outcomes** in `field_visits.csv`.
 - **Rationale:** Ground truth from technician visits (`"Fehler behoben"` vs. `"Kein Fehler gefunden"`) accumulates gradually. Retraining on new ground truth updates historical gateway reliability priors.
 
 ---
 
-## 3. Pre-Promotion Validation Gate
 
-Before any candidate model $v_{new}$ is promoted to `ACTIVE`, it must pass an automated comparison against the currently active model $v_{active}$ across held-out historical weeks:
+## 3. Pre-Promotion Validation (Operator-Run Procedure)
 
-### Economic Metric: Cost Impact Framework
+Before promoting a candidate model to ACTIVE, the operator must verify it does
+not regress against the currently active model. This is an **operator-run
+procedure**, not an automated gate.
 
-$$\text{Net Cost} = (N_{\text{false visits}} \times €380) - (N_{\text{faults fixed}} \times €600)$$
+### Recommended Validation Steps
 
-- **Pass Condition:** $\text{Net Cost}(v_{new}) \le \text{Net Cost}(v_{active})$ on the evaluation slice.
-- **Degeneracy Check:** The candidate version must generate distinct rank distributions (no uniform zero-scores or constant ranks).
+1. Train candidate without promoting:
+   ```bash
+   python -m src.train --data ./data --version <candidate_name>
+   ```
+2. Run predictions for both candidate and active on held-out weeks:
+   ```bash
+   python -m src.predict --data ./data --version <candidate_name> --out candidate.csv
+   python -m src.predict --data ./data --out active.csv
+   ```
+3. Compare ranking overlap and score distributions across the 8 scored weeks.
+4. Check for degeneracy (all scores zero, all same gateway, constant ranks).
+   The `v2_broken` rollback lifecycle test demonstrates detecting a sigma=999
+   model that produces meaningless rankings.
+5. Promote only if candidate rankings are plausible and non-degenerate:
+   ```bash
+   python -m src.train --promote --version <candidate_name>
+   ```
+6. Run rollback verify to confirm byte-identical output:
+   ```bash
+   python -m src.rollback verify
+   ```
 
----
+### Economic Framework (Reference Only)
 
+The €380/€600 cost framework is the theoretical basis for visit prioritization.
+Automated economic validation against `field_visits.csv` outcomes is **not
+implemented in this submission** -- it is listed as a realistic two-weeks-away
+improvement in DECISIONS.md ADR 0006.
+
+If `field_visits.csv` outcomes are available, the operator can manually
+compute the net cost metric per candidate version before promoting:
+
+```
+Net Cost = (N_false_visits × €380) - (N_faults_fixed × €600)
+Promote if: Net_Cost(candidate) <= Net_Cost(active)
+```
 ## 4. Promotion & Rollback Protocol
 
 1. **Training:** Candidate model trained with `python -m src.train --version <id>` (creates `models/<id>.json` without modifying `models/ACTIVE`).

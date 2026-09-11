@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
 import { SectionTitle } from './SectionTitle';
 import type { DriftReport } from '../types';
 
@@ -13,7 +13,10 @@ interface DriftTabProps {
 export const DriftTab: React.FC<DriftTabProps> = ({
   driftStatus, consecutiveDriftWeeks, actionLoading, onTriggerDrift,
 }) => {
-  const driftOk = !driftStatus?.drift_flagged;
+  // Three distinct states -- do NOT collapse null into "OK".
+  // null means the API call failed or hasn't returned yet.
+  const driftUnavailable = driftStatus === null;
+  const driftOk = !driftUnavailable && !driftStatus.drift_flagged;
 
   const checks = [
     {
@@ -32,10 +35,12 @@ export const DriftTab: React.FC<DriftTabProps> = ({
     },
     {
       title: 'Distribution Range',
-      ok: driftOk,
-      detail: driftOk
-        ? 'All metric values within 5× training maximum.'
-        : 'One or more metrics exceed 5× historical maximum.',
+      ok: driftUnavailable ? true : driftOk,
+      detail: driftUnavailable
+        ? 'Status unavailable.'
+        : driftOk
+          ? 'All metric values within 5× training maximum.'
+          : 'One or more metrics exceed 5× historical maximum.',
     },
   ];
 
@@ -54,15 +59,21 @@ export const DriftTab: React.FC<DriftTabProps> = ({
       </div>
 
       {/* Status banner */}
-      <div style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${driftOk ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, background: driftOk ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+      <div style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${driftUnavailable ? 'rgba(148,163,184,0.3)' : driftOk ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`, background: driftUnavailable ? 'rgba(148,163,184,0.07)' : driftOk ? 'rgba(16,185,129,0.07)' : 'rgba(245,158,11,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {driftOk ? <CheckCircle2 size={32} color="#10b981" /> : <AlertTriangle size={32} color="#f59e0b" />}
+          {driftUnavailable
+            ? <WifiOff size={32} color="#64748b" />
+            : driftOk
+              ? <CheckCircle2 size={32} color="#10b981" />
+              : <AlertTriangle size={32} color="#f59e0b" />}
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: driftOk ? '#10b981' : '#f59e0b' }}>
-              {driftOk ? 'SYSTEM HEALTHY — NO DRIFT DETECTED' : 'DRIFT FLAGGED'}
+            <div style={{ fontSize: 15, fontWeight: 800, color: driftUnavailable ? '#64748b' : driftOk ? '#10b981' : '#f59e0b' }}>
+              {driftUnavailable ? 'DRIFT STATUS UNAVAILABLE' : driftOk ? 'SYSTEM HEALTHY — NO DRIFT DETECTED' : 'DRIFT FLAGGED'}
             </div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              {driftStatus?.summary || 'All schemas, IDs, and distributions within expected bounds.'}
+              {driftUnavailable
+                ? 'Drift monitor API did not respond. Run a check to refresh.'
+                : driftStatus?.summary || 'All schemas, IDs, and distributions within expected bounds.'}
             </div>
             {driftStatus?.checked_at && (
               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>

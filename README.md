@@ -1,8 +1,8 @@
-# LPDG Gateway Visit Prioritization (MLOps Track)
+﻿# LPDG Gateway Visit Prioritization (MLOps Track)
 **LPDG Innovation Hub Selection Challenge 2026**
 
 [![CI Pipeline](https://github.com/Dinesh-kumar9/LPDG_project/actions/workflows/ci.yml/badge.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
-[![Tests](https://img.shields.io/badge/tests-30%20functions-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
+[![Tests](https://img.shields.io/badge/tests-56%20functions-brightgreen.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
 [![CI Coverage Gate](https://img.shields.io/badge/coverage%20gate-20%25%20(CI)-blue.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
@@ -10,13 +10,13 @@
 
 ---
 
-## 📹 Demo Recording
+## ðŸ“¹ Demo Recording
 
 > **Link will be added here before 23:59 IST on Wednesday 16 September.**
 
-The 6–8 minute recording covers: `docker compose up` startup · `validate_submission.py` PASS ·
-model registry (2 versions, ACTIVE pointer) · rollback with SHA-256 verification ·
-drift monitor schema-flag demonstration · DECISIONS.md walkthrough.
+The 6â€“8 minute recording covers: `docker compose up` startup Â· `validate_submission.py` PASS Â·
+model registry (2 versions, ACTIVE pointer) Â· rollback with SHA-256 verification Â·
+drift monitor schema-flag demonstration Â· DECISIONS.md walkthrough.
 
 ---
 
@@ -27,11 +27,11 @@ LPDG operates a telemetry relay network of ~320 radio gateways for utility meter
 **Cost Structure:**
 | Event | Economic Impact |
 |---|---|
-| Visit finds a real fault | **+€600 / week** saved until repaired |
-| Visit finds nothing (false alarm) | **-€380** wasted technician dispatch |
-| Broken gateway left alone | **-€600 / week** repeating loss |
+| Visit finds a real fault | **+â‚¬600 / week** saved until repaired |
+| Visit finds nothing (false alarm) | **-â‚¬380** wasted technician dispatch |
+| Broken gateway left alone | **-â‚¬600 / week** repeating loss |
 
-Historical baseline hit rate was ~34.7% (60.7% wasted visits). This system provides an **auditable, deterministic, MLOps-governed prioritization engine** to optimize technician dispatch decisions across 8 scored weeks (2 Feb – 23 Mar 2026).
+Historical baseline hit rate was ~34.7% (60.7% wasted visits). This system provides an **auditable, deterministic, MLOps-governed prioritization engine** to optimize technician dispatch decisions across 8 scored weeks (2 Feb â€“ 23 Mar 2026).
 
 ---
 
@@ -39,31 +39,31 @@ Historical baseline hit rate was ~34.7% (60.7% wasted visits). This system provi
 
 ```
 Raw Data Ingress (Parquet + CSV + Excel)
-   │
-   ▼
-[src/load.py] ─────────────► [src/drift_monitor.py]
-  • ID normalization to bare hex    • Pre-inference schema validation
-  • Latin-1 German string decode    • Gateway population tracking (>5% new IDs)
-  • Schema invariant assertions     • Metric upper-bound range checks
-   │
-   ▼
+   â”‚
+   â–¼
+[src/load.py] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–º [src/drift_monitor.py]
+  â€¢ ID normalization to bare hex    â€¢ Pre-inference schema validation
+  â€¢ Latin-1 German string decode    â€¢ Gateway population tracking (>5% new IDs)
+  â€¢ Schema invariant assertions     â€¢ Metric upper-bound range checks
+   â”‚
+   â–¼
 [src/train.py]
-  • Versioned parameter extraction
-  • Cryptographic training data hash (SHA-256)
-  • Fixed-slice verification hash
-   │
-   ▼
-[models/ Registry] ◄──────── [src/rollback.py]
-  • vN_<date>.json                  • Atomic ACTIVE pointer replacement
-  • ACTIVE pointer                  • Cryptographic hash verification
-  • rollback_log.jsonl audit        • Append-only rollback audit log
-   │
-   ▼
+  â€¢ Versioned parameter extraction
+  â€¢ Cryptographic training data hash (SHA-256)
+  â€¢ Fixed-slice verification hash
+   â”‚
+   â–¼
+[models/ Registry] â—„â”€â”€â”€â”€â”€â”€â”€â”€ [src/rollback.py]
+  â€¢ vN_<date>.json                  â€¢ Atomic ACTIVE pointer replacement
+  â€¢ ACTIVE pointer                  â€¢ Cryptographic hash verification
+  â€¢ rollback_log.jsonl audit        â€¢ Append-only rollback audit log
+   â”‚
+   â–¼
 [src/predict.py]
-  • Pure deterministic inference
-  • Generates 120-row predictions.csv (8 weeks × 15 visits/wk)
-   │
-   ▼
+  â€¢ Pure deterministic inference
+  â€¢ Generates 120-row predictions.csv (8 weeks Ã— 15 visits/wk)
+   â”‚
+   â–¼
 [FastAPI Backend + React Operations Dashboard]
 ```
 
@@ -80,12 +80,12 @@ When running the pipeline or test suite with real data, supply a dataset directo
 
 ```
 <data-dir>/
-├── telemetry/
-│   └── month=YYYY-MM/*.parquet           # Gateway hourly metrics
-├── gateway_master.csv                    # Latin-1 master metadata & site types
-├── field_visits.csv                      # Historical technician dispatches
-├── meter_read_success.csv                # Downstream reception rates
-└── engineer_review_2026-02.xlsx          # Qualitative investigation flags
+â”œâ”€â”€ telemetry/
+â”‚   â””â”€â”€ month=YYYY-MM/*.parquet           # Gateway hourly metrics
+â”œâ”€â”€ gateway_master.csv                    # Latin-1 master metadata & site types
+â”œâ”€â”€ field_visits.csv                      # Historical technician dispatches
+â”œâ”€â”€ meter_read_success.csv                # Downstream reception rates
+â””â”€â”€ engineer_review_2026-02.xlsx          # Qualitative investigation flags
 ```
 
 ### Specifying Data Location
@@ -160,34 +160,34 @@ python -m src.rollback verify --data "../path/to/data"
 ## 6. Repository Layout
 
 ```
-├── backend/
-│   ├── Dockerfile                # Backend container image definition
-│   ├── src/
-│   │   ├── load.py               # Single normalization boundary & schema validation
-│   │   ├── train.py              # Versioned training & artifact creation
-│   │   ├── predict.py            # Deterministic inference engine
-│   │   ├── drift_monitor.py      # Pre-inference drift detection
-│   │   └── rollback.py           # Registry controller & hash verification
-│   ├── api/                      # FastAPI routers & dependencies
-│   ├── models/                   # Model registry (JSON artifacts + ACTIVE + audit log)
-│   ├── tests/                    # Pytest suite (30 test functions across 7 modules)
-│   ├── predictions.csv           # Committed 120-row baseline submission
-│   ├── pyproject.toml            # Ruff, Mypy, Pytest configuration
-│   └── requirements.txt
-├── frontend/                     # React 18 + TypeScript + Tailwind operations UI
-├── drift_reports/                # Stored JSON drift monitor outputs
-├── RETRAIN_POLICY.md             # Defensible operational retraining criteria
-├── DECISIONS.md                  # Architectural Decision Records (ADRs)
-├── ARCHITECTURE.md               # Visual system diagrams
-├── AI-USAGE.md                   # Disclosure of AI tooling assistance
-└── docker-compose.yml
+â”œâ”€â”€ backend/
+â”‚   â”œâ”€â”€ Dockerfile                # Backend container image definition
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ load.py               # Single normalization boundary & schema validation
+â”‚   â”‚   â”œâ”€â”€ train.py              # Versioned training & artifact creation
+â”‚   â”‚   â”œâ”€â”€ predict.py            # Deterministic inference engine
+â”‚   â”‚   â”œâ”€â”€ drift_monitor.py      # Pre-inference drift detection
+â”‚   â”‚   â””â”€â”€ rollback.py           # Registry controller & hash verification
+â”‚   â”œâ”€â”€ api/                      # FastAPI routers & dependencies
+â”‚   â”œâ”€â”€ models/                   # Model registry (JSON artifacts + ACTIVE + audit log)
+â”‚   â”œâ”€â”€ tests/                    # Pytest suite (56 test functions across 9 modules)
+â”‚   â”œâ”€â”€ predictions.csv           # Committed 120-row baseline submission
+â”‚   â”œâ”€â”€ pyproject.toml            # Ruff, Mypy, Pytest configuration
+â”‚   â””â”€â”€ requirements.txt
+â”œâ”€â”€ frontend/                     # React 18 + TypeScript + Tailwind operations UI
+â”œâ”€â”€ drift_reports/                # Stored JSON drift monitor outputs
+â”œâ”€â”€ RETRAIN_POLICY.md             # Defensible operational retraining criteria
+â”œâ”€â”€ DECISIONS.md                  # Architectural Decision Records (ADRs)
+â”œâ”€â”€ ARCHITECTURE.md               # Visual system diagrams
+â”œâ”€â”€ AI-USAGE.md                   # Disclosure of AI tooling assistance
+â””â”€â”€ docker-compose.yml
 ```
 
 ---
 
 ## 7. Testing & Quality Assurance
 
-- **30 Unit & Integration Test Functions** across 7 test suites, including a portable synthetic-data pipeline test that runs without private challenge data.
+- **56 Unit & Integration Test Functions** across 9 test suites, including a portable synthetic-data pipeline test that runs without private challenge data.
 - **CI Pipeline Enforced**:
   - **Ruff**: Linting and formatting checked across all Python code (`ruff==0.8.6`).
   - **Mypy**: Strict type-checking with zero errors (`strict = true`).
@@ -210,16 +210,16 @@ drift-monitor, and rollback commands to run during the live session.
 After `docker compose up` reaches `Application startup complete`:
 
 ```bash
-# Health check — should return {"status": "ok", "version": "1.0.0"}
+# Health check â€” should return {"status": "ok", "version": "1.0.0"}
 curl http://localhost:8000/health
 
-# Predictions — should return 120-row JSON with 8 weeks
+# Predictions â€” should return 120-row JSON with 8 weeks
 curl http://localhost:8000/api/predictions | python -m json.tool | grep total_rows
 
-# Model registry — should list 2 versions with one marked ACTIVE
+# Model registry â€” should list 2 versions with one marked ACTIVE
 curl http://localhost:8000/api/registry
 
-# Drift status — should show consecutive_flagged_weeks and latest report
+# Drift status â€” should show consecutive_flagged_weeks and latest report
 curl http://localhost:8000/api/drift/status
 ```
 
@@ -228,7 +228,7 @@ curl http://localhost:8000/api/drift/status
 | Symptom | Likely Cause | Fix |
 |---|---|---|
 | `docker compose up` exits immediately | Missing `data/` directory | `mkdir -p data` and place the data bundle inside |
-| `curl /health` → connection refused | Container not ready yet | Wait 30–60 s for uvicorn to start after pipeline runs |
+| `curl /health` â†’ connection refused | Container not ready yet | Wait 30â€“60 s for uvicorn to start after pipeline runs |
 | `/api/predictions` returns 404 | `predictions.csv` not generated | `curl -X POST http://localhost:8000/api/predictions/run` |
 | `/api/registry` shows no versions | `models/ACTIVE` missing | `docker exec <container> python -m src.train --data /app/data --promote` |
 | `docker compose up` fails on install | Python version mismatch | Ensure Docker is running; the image pins Python 3.12 |

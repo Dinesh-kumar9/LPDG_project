@@ -65,6 +65,11 @@ class DriftReport:
     silent_gateways: list[str] = field(default_factory=list)
     silent_gateway_count: int = 0
 
+    # Explicit week identifier derived from the data's own latest timestamp.
+    # Use this instead of relying on the report file's wall-clock date for
+    # period-aware consecutive-flag counting.
+    week_start: str = ""  # ISO date of the Monday of the most recent data week
+
     # Result
     drift_flagged: bool = False
     summary: str = "No drift detected."
@@ -143,6 +148,9 @@ def _check_gateway_population(
       They have no historical baseline to compare against, so any value
       would look like an anomaly. Flagging their existence is sufficient.
     """
+    # Guard: schema drift already flagged missing gateway_id — skip safely.
+    if "gateway_id" not in new_df.columns:
+        return
     known_ids = set(reference_version_artifact.get("known_gateway_ids", []))
     new_ids = set(new_df["gateway_id"].unique())
 
@@ -182,6 +190,9 @@ def _check_value_ranges(
       a data-quality signal). 5× historical max catches sensor errors, unit
       changes, and obvious corruption without false-positiving on real anomalies.
     """
+    # Guard: schema drift already flagged missing gateway_id — skip safely.
+    if "gateway_id" not in new_df.columns:
+        return
     known_ids = set(reference_version_artifact.get("known_gateway_ids", []))
     existing_df = new_df[new_df["gateway_id"].isin(known_ids)]
 
@@ -232,6 +243,12 @@ def _check_silent_gateways(
       failure case (a dead gateway costs €600/week) is structurally invisible
       to the baseline. See DECISIONS.md ADR 0009.
 
+    WHY we anchor to the data's latest timestamp, not the system clock:
+      The challenge data ends March 2026. Running the monitor in September 2026
+      with a wall-clock anchor would classify ALL gateways as silent (zero rows
+      in the last 7 real-world days). Using max(ts) from the incoming telemetry
+      ensures the window is always relative to the data being evaluated.
+
     WHY we log rather than inject a score:
       Total silence is ambiguous: hardware death, data pipeline failure, or
       an unnotified decommission are all possible. Fabricating a score treats
@@ -242,11 +259,22 @@ def _check_silent_gateways(
     not a data quality signal that should block prediction or increment the
     consecutive-flag counter toward the retrain threshold.
     """
-    known_ids = set(reference_version_artifact.get("known_gateway_ids", []))
-    if not known_ids or "ts" not in new_df.columns:
+    # Guard: if required columns are missing, schema drift is already flagged.
+    if "gateway_id" not in new_df.columns or "ts" not in new_df.columns:
         return
 
-    cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=SILENT_GATEWAY_RECENT_DAYS)
+    known_ids = set(reference_version_artifact.get("known_gateway_ids", []))
+    if not known_ids or new_df.empty:
+        return
+
+    # FIX: anchor to the data's own latest timestamp, NOT the system clock.
+    # Using pd.Timestamp.now() causes every gateway to appear silent when the
+    # challenge's historical data (ending March 2026) is evaluated later.
+    latest_ts = new_df["ts"].max()
+    if pd.isna(latest_ts):
+        return
+    cutoff = latest_ts - pd.Timedelta(days=SILENT_GATEWAY_RECENT_DAYS)
+
     recent_ids = set(new_df[new_df["ts"] >= cutoff]["gateway_id"].unique())
 
     silent = sorted(known_ids - recent_ids)
@@ -258,9 +286,10 @@ def _check_silent_gateways(
         ellipsis = "..." if len(silent) > 5 else ""
         print(
             f"[WARN] {len(silent)} known gateway(s) produced zero telemetry "
-            f"in the last {SILENT_GATEWAY_RECENT_DAYS} days — they score 0 "
-            "and cannot reach the top-15. Check drift report 'silent_gateways' "
-            f"field. First five: {preview}{ellipsis}"
+            f"in the last {SILENT_GATEWAY_RECENT_DAYS} days (relative to "
+            f"data latest={latest_ts.date()}) — they score 0 and cannot "
+            "reach the top-15. Check drift report 'silent_gateways' field. "
+            f"First five: {preview}{ellipsis}"
         )
 
 
@@ -311,10 +340,21 @@ def run_drift_check(
     # validation and will not consume a batch that has been flagged.
     new_telemetry = load_telemetry(data_dir, validate_schema=False)
 
+    # Derive the week_start anchor from the data itself (not the wall clock).
+    # This makes the period identifier correct for historical datasets.
+    week_start_str = ""
+    if not new_telemetry.empty and "ts" in new_telemetry.columns:
+        latest_ts = new_telemetry["ts"].max()
+        if not pd.isna(latest_ts):
+            days_since_monday = latest_ts.weekday()
+            monday = (latest_ts - pd.Timedelta(days=days_since_monday)).date()
+            week_start_str = monday.isoformat()
+
     report = DriftReport(
         checked_at=dt.datetime.now(dt.UTC).isoformat(),
         data_path=str(data_dir),
         reference_version=ref_version,
+        week_start=week_start_str,
         summary="No drift detected.",
     )
 

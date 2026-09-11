@@ -215,8 +215,47 @@ def _hash_dataframe(df: pd.DataFrame) -> str:
     return "sha256:" + hashlib.sha256(csv_bytes).hexdigest()
 
 
+def _serialize_predictions_canonical(predictions: pd.DataFrame) -> bytes:
+    """
+    Canonical, deterministic byte serialization of a predictions DataFrame.
+
+    This is the SINGLE authoritative serialization used by:
+      - compute_verify_hash() (training time)
+      - rollback.py verify()
+      - predict.py output
+      - determinism tests
+
+    Invariants:
+      - Rows sorted by week_start ASC, score DESC, gateway_id ASC (tiebreak)
+      - rank re-derived from sort order via groupby.cumcount()
+      - Exactly 5 columns in fixed order: week_start, rank, gateway_id, score, reason
+      - float_format="%.1f" (scores are rendered with exactly 1 decimal place)
+      - UTF-8 encoding, Unix newlines from pandas to_csv()
+
+    WHY one canonical path:
+      Previously train.py wrote CSVs without float_format and without the
+      deterministic re-sort, while rollback.py wrote with float_format but also
+      without re-sort, and predict.py applied the sort+re-rank. Three subtly
+      different byte streams — but the stored hash only matched one of them.
+      This function closes all three gaps.
+    """
+    df = predictions.copy()
+    df = df.sort_values(
+        ["week_start", "score", "gateway_id"],
+        ascending=[True, False, True],
+    ).reset_index(drop=True)
+    df["rank"] = df.groupby("week_start").cumcount() + 1
+    df = df[["week_start", "rank", "gateway_id", "score", "reason"]]
+    return str(df.to_csv(index=False, float_format="%.1f")).encode("utf-8")
+
+
+def _hash_predictions_canonical(predictions: pd.DataFrame) -> str:
+    """SHA-256 over the canonical byte serialization of a predictions DataFrame."""
+    return "sha256:" + hashlib.sha256(_serialize_predictions_canonical(predictions)).hexdigest()
+
+
 def _hash_predictions_csv(path: pathlib.Path) -> str:
-    """SHA-256 hash of a predictions CSV file."""
+    """SHA-256 hash of a predictions CSV file (used for the output file display)."""
     content = path.read_bytes()
     return "sha256:" + hashlib.sha256(content).hexdigest()
 
@@ -234,6 +273,11 @@ def compute_verify_hash(
     """
     Generate predictions for the fixed verify slice and return their hash.
 
+    Uses _hash_predictions_canonical() — the single canonical path shared by
+    predict.py output and rollback.py verify(). This ensures:
+
+        training hash == production predict hash == rollback verify hash
+
     WHY a fixed slice:
       rollback.py verify must prove that the active version produces byte-identical
       output after a rollback. It does this by re-running predict on a fixed,
@@ -243,11 +287,7 @@ def compute_verify_hash(
     """
     verify_weeks = [VERIFY_SLICE_DATE]
     predictions = score_all_weeks(telemetry, verify_weeks, sigma, baseline_days, recent_days)
-    tmp_path = tmp_dir / "_verify_slice.csv"
-    predictions.to_csv(tmp_path, index=False)
-    h = _hash_predictions_csv(tmp_path)
-    tmp_path.unlink()
-    return h
+    return _hash_predictions_canonical(predictions)
 
 
 # ─── Model artifact writer ────────────────────────────────────────────────────
