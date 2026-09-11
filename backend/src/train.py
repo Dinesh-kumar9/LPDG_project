@@ -210,8 +210,23 @@ def score_all_weeks(
 
 
 def _hash_dataframe(df: pd.DataFrame) -> str:
-    """SHA-256 hash of a DataFrame's canonical CSV representation."""
-    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    """
+    SHA-256 hash of a DataFrame's canonical CSV representation.
+
+    Determinism guarantee:
+      Parquet files may be read in different OS-dependent file-enumeration
+      order on Windows vs Linux (Docker).  When duplicate rows exist in the
+      raw data (13 094 identical (gateway_id, ts) rows confirmed), a plain
+      sort_values on a non-unique key is NOT stable -- duplicate rows can
+      land in different relative positions depending on their input order,
+      producing a different CSV byte stream and therefore a different hash.
+
+      Fix: drop_duplicates() first (removing exactly-identical rows in an
+      order-independent way), then sort_values() on ALL columns so the sort
+      key is unique -> fully deterministic on every platform.
+    """
+    canonical = df.drop_duplicates().sort_values(list(df.columns)).reset_index(drop=True)
+    csv_bytes = canonical.to_csv(index=False).encode("utf-8")
     return "sha256:" + hashlib.sha256(csv_bytes).hexdigest()
 
 
@@ -344,9 +359,9 @@ def write_model_artifact(
         )
 
     # Hash the training data so drift monitor can detect input changes.
-    training_data_hash = _hash_dataframe(
-        telemetry[["gateway_id", "ts"] + METRICS].sort_values(["gateway_id", "ts"])
-    )
+    # Pass only the columns that define the data identity; _hash_dataframe
+    # handles deduplication + deterministic sort internally.
+    training_data_hash = _hash_dataframe(telemetry[["gateway_id", "ts"] + METRICS])
 
     # Compute the verify hash for rollback.py verify.
     verify_hash = compute_verify_hash(telemetry, sigma, baseline_days, recent_days, tmp_dir)

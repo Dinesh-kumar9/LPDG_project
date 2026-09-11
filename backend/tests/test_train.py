@@ -120,8 +120,14 @@ def test_training_data_hash_matches_independent_recompute(real_data_dir, temp_mo
     )
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
 
-    # Independent computation -- canonical column + sort order must match train.py exactly.
-    canonical = telemetry[["gateway_id", "ts"] + METRICS].sort_values(["gateway_id", "ts"])
+    # Independent computation -- must mirror _hash_dataframe exactly.
+    # Canonical path (see train.py _hash_dataframe):
+    #   1. Drop exact-duplicate rows (order-independent removal)
+    #   2. Sort by ALL columns so the sort key is unique after dedup
+    #      (plain sort_values on gateway_id+ts is non-deterministic when
+    #       13 094 identical duplicate rows exist in the parquet data)
+    cols = ["gateway_id", "ts"] + METRICS
+    canonical = telemetry[cols].drop_duplicates().sort_values(cols).reset_index(drop=True)
     csv_bytes = canonical.to_csv(index=False).encode("utf-8")
     expected = "sha256:" + hashlib.sha256(csv_bytes).hexdigest()
 
