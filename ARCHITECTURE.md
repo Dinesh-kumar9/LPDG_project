@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph RollbackController["Rollback Engine (src/rollback.py)"]
         ACT --> RB[rollback.py to vN]
-        RB -->|Append {timestamp, from, to, reason}| RBL[models/rollback_log.jsonl]
+        RB -->|"Append (timestamp, from, to, reason)"| RBL[models/rollback_log.jsonl]
         RB -->|Swap Pointer| ACT
         ACT --> VB[rollback.py verify]
         VB -->|Check against stored fixed-slice hash| VRES[PASS / FAIL Output]
