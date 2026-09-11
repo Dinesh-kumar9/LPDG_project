@@ -1,4 +1,4 @@
-﻿# Architectural Decisions Log (ADR)
+# Architectural Decisions Log (ADR)
 **LPDG Gateway Visit Prioritization (MLOps Track)**
 
 ---
@@ -156,9 +156,6 @@ Ranked by estimated impact on the â‚¬600/week cost metric:
 5. **Economic candidate validation utility** (Week 2, medium impact): A small CLI compare script that runs both candidate and active versions on held-out weeks and prints the net cost delta using the EUR 380/EUR 600 framework. This would make RETRAIN_POLICY.md Section 3 automated rather than operator-manual -- the cheapest implementation is a 30-line script.
 6. **Historical/replay-aware monitoring** (Week 1, medium impact): Already implemented as Fix 1 -- the silent-gateway cutoff now uses `max(ts)` from telemetry rather than the wall clock, so the drift monitor works correctly on historical data evaluated after its collection date.
 7. **Operational workflow for silent gateways** (Week 2, low impact): A dispatcher queue endpoint (`GET /api/drift/silent-gateways`) that returns only the advisory silent-gateway list, separate from the full drift report. This simplifies operator tooling for the most urgent class of failure.
-5. **Economic candidate validation utility** (Week 2): A CLI `compare` script that runs candidate and active predictions on held-out weeks and prints the net-cost delta using the EUR380/EUR600 framework. Makes `RETRAIN_POLICY.md` Section 3 automated rather than operator-manual.
-6. **Historical/replay-aware monitoring** (Week 1, now implemented): Silent-gateway cutoff uses `max(ts)` from telemetry rather than the wall clock -- correct for both live and historical evaluation.
-7. **Operational dispatcher queue for silent gateways** (Week 2): A `GET /api/drift/silent-gateways` endpoint returning only the advisory silent-gateway list, separate from the full drift report.
 4. **Retrain on ground-truth feedback loop** (Week 2, high impact): The current retrain policy requires 3 consecutive drift flags. With two more weeks, we would collect field visit outcomes from the scored window, use `field_visits.outcome == "Fehler behoben"` as a weak positive label, and validate whether a supervised signal (logistic regression or XGBoost) beats the 3-sigma baseline on total cost â€” not just accuracy.
 
 ---
@@ -215,4 +212,4 @@ Score injection treats all three identically. An operator with local knowledge c
 - **Positive:** `drift_flagged` and the retrain counter are not affected. A batch with silent gateways is not inherently a data quality problem.
 - **Positive:** The `silent_gateways` list gives the operations team an explicit "no recent telemetry" work queue â€” actionable without changing the scoring model.
 - **Negative:** Silent gateways do not appear in `predictions.csv`. If asked "why isn't gateway X in the top 15?", the answer is: "zero telemetry in the last 7 days â€” check the drift report's `silent_gateways` field."
-- **Fixed (Fix 1):** The silent-gateway cutoff now uses \max(ts)\ from the incoming telemetry as the anchor (not the system clock). Historical datasets evaluated after their collection date no longer incorrectly classify all gateways as silent.
+- **Fixed (Fix 1):** The silent-gateway cutoff now uses `max(ts)` from the incoming telemetry as the anchor (not the system clock). Historical datasets evaluated after their collection date no longer incorrectly classify all gateways as silent.

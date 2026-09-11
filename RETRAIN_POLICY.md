@@ -1,4 +1,4 @@
-﻿# Retrain Policy â€” LPDG Gateway Prioritization
+# Retrain Policy â€” LPDG Gateway Prioritization
 **LPDG Innovation Hub Selection Challenge 2026 â€” MLOps Track**
 
 ---

@@ -1,4 +1,4 @@
-﻿# LPDG Gateway Visit Prioritization (MLOps Track)
+# LPDG Gateway Visit Prioritization (MLOps Track)
 **LPDG Innovation Hub Selection Challenge 2026**
 
 [![CI Pipeline](https://github.com/Dinesh-kumar9/LPDG_project/actions/workflows/ci.yml/badge.svg)](https://github.com/Dinesh-kumar9/LPDG_project/actions)
