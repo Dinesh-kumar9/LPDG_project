@@ -213,20 +213,23 @@ def _hash_dataframe(df: pd.DataFrame) -> str:
     """
     SHA-256 hash of a DataFrame's canonical CSV representation.
 
-    Determinism guarantee:
-      Parquet files may be read in different OS-dependent file-enumeration
-      order on Windows vs Linux (Docker).  When duplicate rows exist in the
-      raw data (13 094 identical (gateway_id, ts) rows confirmed), a plain
-      sort_values on a non-unique key is NOT stable -- duplicate rows can
-      land in different relative positions depending on their input order,
-      producing a different CSV byte stream and therefore a different hash.
+    Determinism guarantee (two layers):
 
-      Fix: drop_duplicates() first (removing exactly-identical rows in an
-      order-independent way), then sort_values() on ALL columns so the sort
-      key is unique -> fully deterministic on every platform.
+    Layer 1 — row-order independence:
+      Parquet files may be enumerated in different OS-dependent order on
+      Windows vs Linux (Docker).  13 094 identical (gateway_id, ts) rows
+      confirmed in the data.  Fix: drop_duplicates() removes exactly-
+      identical rows in an order-independent way, then sort_values() on ALL
+      columns gives a unique sort key -> same row order on every platform.
+
+    Layer 2 — line-terminator independence:
+      pandas to_csv() uses os.linesep by default: CRLF (\r\n) on Windows,
+      LF (\n) on Linux.  Same data -> different byte stream -> different
+      SHA-256.  Fix: pin lineterminator='\n' (Unix LF) everywhere so the
+      byte stream is identical on all platforms.
     """
     canonical = df.drop_duplicates().sort_values(list(df.columns)).reset_index(drop=True)
-    csv_bytes = canonical.to_csv(index=False).encode("utf-8")
+    csv_bytes = canonical.to_csv(index=False, lineterminator="\n").encode("utf-8")
     return "sha256:" + hashlib.sha256(csv_bytes).hexdigest()
 
 
@@ -261,7 +264,7 @@ def _serialize_predictions_canonical(predictions: pd.DataFrame) -> bytes:
     ).reset_index(drop=True)
     df["rank"] = df.groupby("week_start").cumcount() + 1
     df = df[["week_start", "rank", "gateway_id", "score", "reason"]]
-    return str(df.to_csv(index=False, float_format="%.1f")).encode("utf-8")
+    return df.to_csv(index=False, float_format="%.1f", lineterminator="\n").encode("utf-8")
 
 
 def _hash_predictions_canonical(predictions: pd.DataFrame) -> str:

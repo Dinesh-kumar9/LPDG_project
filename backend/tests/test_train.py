@@ -124,11 +124,11 @@ def test_training_data_hash_matches_independent_recompute(real_data_dir, temp_mo
     # Canonical path (see train.py _hash_dataframe):
     #   1. Drop exact-duplicate rows (order-independent removal)
     #   2. Sort by ALL columns so the sort key is unique after dedup
-    #      (plain sort_values on gateway_id+ts is non-deterministic when
-    #       13 094 identical duplicate rows exist in the parquet data)
+    #   3. lineterminator='\n' (Unix LF) -- os.linesep is CRLF on Windows,
+    #      which produces different bytes from Linux (Docker) -> different hash.
     cols = ["gateway_id", "ts"] + METRICS
     canonical = telemetry[cols].drop_duplicates().sort_values(cols).reset_index(drop=True)
-    csv_bytes = canonical.to_csv(index=False).encode("utf-8")
+    csv_bytes = canonical.to_csv(index=False, lineterminator="\n").encode("utf-8")
     expected = "sha256:" + hashlib.sha256(csv_bytes).hexdigest()
 
     assert (
@@ -391,3 +391,66 @@ def test_rollback_verify_passes_for_freshly_trained_artifact(real_data_dir, temp
         f"(Check that _serialize_predictions_canonical is used by both "
         f"compute_verify_hash in train.py AND verify() in rollback.py)"
     )
+
+
+def test_training_data_hash_uses_lf_not_crlf(real_data_dir, temp_models_dir):
+    """
+    Regression test for the CRLF vs LF line-terminator bug.
+
+    WHAT THIS CATCHES:
+      pandas to_csv() uses os.linesep by default: CRLF (\\r\\n) on Windows,
+      LF (\\n) on Linux/Docker.  The SAME data produces DIFFERENT SHA-256 hashes
+      on the two platforms unless lineterminator='\\n' is pinned explicitly.
+
+    HOW:
+      Compute the hash two ways:
+        (a) With LF  -- what _hash_dataframe must produce.
+        (b) With CRLF -- what os.linesep gives on Windows.
+      Assert that the stored artifact hash matches (a) but NOT (b) when running
+      on Windows (where the two differ).  On Linux both paths produce LF anyway,
+      so the test degenerates to assert stored == lf_hash, which still passes.
+    """
+    import os
+
+    telemetry = load_telemetry(real_data_dir)
+    artifact_path = write_model_artifact(
+        telemetry=telemetry,
+        models_dir=temp_models_dir,
+        version_name="test_lf_terminator",
+        sigma=3.0,
+        promote=False,
+    )
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    stored = artifact["training_data_hash"]
+
+    cols = ["gateway_id", "ts"] + METRICS
+    canonical = telemetry[cols].drop_duplicates().sort_values(cols).reset_index(drop=True)
+
+    lf_hash = (
+        "sha256:"
+        + hashlib.sha256(
+            canonical.to_csv(index=False, lineterminator="\n").encode("utf-8")
+        ).hexdigest()
+    )
+    crlf_hash = (
+        "sha256:"
+        + hashlib.sha256(
+            canonical.to_csv(index=False, lineterminator="\r\n").encode("utf-8")
+        ).hexdigest()
+    )
+
+    # The stored hash must always match the LF variant.
+    assert stored == lf_hash, (
+        f"training_data_hash uses CRLF or some other line ending!\n"
+        f"  stored   : {stored}\n"
+        f"  lf_hash  : {lf_hash}\n"
+        f"  crlf_hash: {crlf_hash}\n"
+        f"Fix: ensure _hash_dataframe uses lineterminator='\\n'."
+    )
+
+    # On Windows, LF and CRLF hashes are different -- confirm the bug is fixed.
+    if os.linesep == "\r\n":
+        assert stored != crlf_hash, (
+            "On Windows: stored hash should NOT equal the CRLF hash.\n"
+            "If they're equal, lineterminator is not being pinned to LF."
+        )
