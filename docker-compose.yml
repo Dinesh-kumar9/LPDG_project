@@ -16,7 +16,7 @@ services:
       - LPDG_PREDICTIONS_PATH=/app/backend/predictions.csv
     command: >
       sh -c "if [ ! -f models/ACTIVE ]; then python -m src.train --data /app/data --promote; fi &&
-      python -m src.drift_monitor --data /app/data &&
+      python -m src.drift_monitor --data /app/data --reports-dir /app/drift_reports &&
       python -m src.predict --data /app/data --out /app/backend/predictions.csv &&
       uvicorn api.main:app --host 0.0.0.0 --port 8000"
     healthcheck:
