@@ -35,169 +35,70 @@ Historical baseline hit rate was ~34.7% (60.7% wasted visits). This system provi
 
 ---
 
-## 2. Architecture & MLOps Components
+## 2. Architecture & MLOps Pipeline
 
-### 2.1 System Architecture
+### How It Works — End to End
+
+```mermaid
+flowchart LR
+    A["📡 Raw Telemetry\n~320 Gateways\nHourly readings"] -->|normalize &\nvalidate| B["🔍 Drift Monitor\nSchema check\nAnomaly scan"]
+    B -->|clean data| C["🧠 Train\n3-sigma baseline\nper gateway"]
+    C -->|versioned\nartifact| D["📦 Model Registry\nv1, v2...\nACTIVE pointer"]
+    D -->|load params| E["📊 Predict\nScore & rank\nTop 15 per week"]
+    E -->|120-row CSV| F["🖥️ Dashboard\nFastAPI + React\nOperations UI"]
+
+    style A fill:#1e3a5f,color:#fff,stroke:#2563eb
+    style B fill:#3b1f2b,color:#fff,stroke:#dc2626
+    style C fill:#1a3329,color:#fff,stroke:#16a34a
+    style D fill:#2d1f3a,color:#fff,stroke:#9333ea
+    style E fill:#1a3329,color:#fff,stroke:#16a34a
+    style F fill:#1e2a3a,color:#fff,stroke:#0ea5e9
+```
+
+---
+
+### Weekly Decision — Predict or Retrain?
 
 ```mermaid
 flowchart TD
-    subgraph INPUT["📥 Data Ingress"]
-        T["Telemetry Parquet\n(hourly, partitioned by month)"]
-        M["gateway_master.csv\n(Latin-1, site metadata)"]
-        F["field_visits.csv\n(historical dispatches)"]
-        R["meter_read_success.csv"]
-    end
+    A([🗓️ New data\narrives weekly]) --> B{Drift\ndetected?}
+    B -- No --> C[📊 Run predictions\nTop 15 gateways]
+    B -- Yes\n3+ weeks --> D[🔁 Retrain model\nnew version]
+    D --> E{Hash\nverified?}
+    E -- ✅ PASS --> C
+    E -- ❌ FAIL --> F[↩️ Rollback to\nprevious version]
+    F --> C
+    C --> G([📋 predictions.csv\nsubmitted])
 
-    subgraph LOAD["🔄 src/load.py — Single Normalization Boundary"]
-        L1["MAC → bare-hex ID normalization"]
-        L2["Latin-1 German string decode"]
-        L3["Schema invariant assertions"]
-        L4["Timestamp UTC alignment"]
-    end
-
-    subgraph DRIFT["🛡️ src/drift_monitor.py — Pre-Inference Guard"]
-        D1["Schema column diff\n(missing / new columns)"]
-        D2["Gateway population check\n(>5% new IDs → flag)"]
-        D3["Value range check\n(>5× training max → flag)"]
-        D4["Silent gateway detection\n(0 rows in last 7 days → warn)"]
-        D5["DriftReport JSON\n+ consecutive-week counter"]
-    end
-
-    subgraph TRAIN["🧠 src/train.py — Versioned Training"]
-        TR1["3-sigma per-gateway\nbaseline statistics"]
-        TR2["SHA-256 training data hash"]
-        TR3["Fixed-slice verification hash\n(VERIFY_SLICE_DATE)"]
-        TR4["Model artifact JSON\n(params + hashes + gateway IDs)"]
-    end
-
-    subgraph REGISTRY["📦 models/ Registry"]
-        REG1["vN_date.json artifacts"]
-        REG2["ACTIVE pointer\n(atomic file replace)"]
-        REG3["rollback_log.jsonl\n(append-only audit)"]
-    end
-
-    subgraph ROLLBACK["↩️ src/rollback.py"]
-        RB1["Atomic ACTIVE swap"]
-        RB2["SHA-256 verify\n(byte-identical output check)"]
-        RB3["Audit log append"]
-    end
-
-    subgraph PREDICT["📊 src/predict.py — Deterministic Inference"]
-        P1["Load ACTIVE model params"]
-        P2["Score 8 weeks × all gateways\n(3-sigma flagged-hours)"]
-        P3["Rank top 15 per week"]
-        P4["predictions.csv\n(120 rows, canonical byte format)"]
-    end
-
-    subgraph API["⚡ FastAPI Backend"]
-        A1["GET /api/predictions"]
-        A2["GET /api/registry"]
-        A3["GET /api/drift/status"]
-        A4["POST /api/rollback"]
-        A5["GET /health"]
-    end
-
-    subgraph UI["🖥️ React Operations Dashboard"]
-        U1["Predictions table\n(week selector, rank view)"]
-        U2["Model registry viewer\n(versions + ACTIVE badge)"]
-        U3["Drift monitor panel\n(schema / range / silent alerts)"]
-        U4["Rollback controls\n(one-click + hash verification)"]
-    end
-
-    INPUT --> LOAD
-    LOAD --> DRIFT
-    LOAD --> TRAIN
-    TRAIN --> REGISTRY
-    ROLLBACK --> REGISTRY
-    REGISTRY --> PREDICT
-    PREDICT --> API
-    DRIFT --> API
-    REGISTRY --> API
-    ROLLBACK --> API
-    API --> UI
-
-    style INPUT fill:#1e3a5f,color:#fff,stroke:#2563eb
-    style LOAD fill:#1e3a5f,color:#fff,stroke:#2563eb
-    style DRIFT fill:#3b1f2b,color:#fff,stroke:#dc2626
-    style TRAIN fill:#1a3329,color:#fff,stroke:#16a34a
-    style REGISTRY fill:#2d1f3a,color:#fff,stroke:#9333ea
-    style ROLLBACK fill:#2d1f3a,color:#fff,stroke:#9333ea
-    style PREDICT fill:#1a3329,color:#fff,stroke:#16a34a
-    style API fill:#1e3a5f,color:#fff,stroke:#2563eb
-    style UI fill:#1e2a3a,color:#fff,stroke:#0ea5e9
+    style A fill:#1e3a5f,color:#fff,stroke:#2563eb
+    style B fill:#3b1f2b,color:#fff,stroke:#dc2626
+    style C fill:#1a3329,color:#fff,stroke:#16a34a
+    style D fill:#1a3329,color:#fff,stroke:#16a34a
+    style E fill:#2d1f3a,color:#fff,stroke:#9333ea
+    style F fill:#2d1f3a,color:#fff,stroke:#9333ea
+    style G fill:#1e3a5f,color:#fff,stroke:#2563eb
 ```
 
 ---
 
-### 2.2 Weekly MLOps Pipeline — Execution Flow
+### Scoring Logic — Why a Gateway Gets Flagged
 
 ```mermaid
-sequenceDiagram
-    participant OPS as 👤 Operator
-    participant DM as 🛡️ drift_monitor
-    participant TR as 🧠 train
-    participant REG as 📦 Registry
-    participant PR as 📊 predict
-    participant API as ⚡ FastAPI
+flowchart LR
+    A["📡 Gateway\nHourly metrics"] --> B["📐 28-day baseline\nmean & std per metric"]
+    B --> C{"Value >\nmean + 3σ?"}
+    C -- Yes --> D["🚨 Flag that hour\n+1 to score"]
+    C -- No --> E["✅ Normal\nskip"]
+    D --> F["🏆 Rank all gateways\nTop 15 = visit list"]
+    E --> F
 
-    Note over OPS,API: Every Monday — New Telemetry Batch Arrives
-
-    OPS->>DM: python -m src.drift_monitor --data ./data
-    DM->>DM: Schema diff + range check + silent-gateway scan
-    DM-->>OPS: DriftReport JSON (drift_flagged, silent_gateways)
-
-    alt drift_flagged == False
-        Note over OPS,API: ✅ Data healthy — proceed to prediction
-        OPS->>PR: python -m src.predict --data ./data
-        PR->>REG: Load ACTIVE model params
-        REG-->>PR: sigma, baseline_days, recent_days, metrics
-        PR->>PR: Score 8 weeks × 320 gateways\nRank top 15 per week
-        PR-->>OPS: predictions.csv (120 rows, SHA-256 verified)
-    else consecutive_drift_weeks >= 3
-        Note over OPS,API: ⚠️ Retrain policy triggered
-        OPS->>TR: python -m src.train --data ./data --version v2 --promote
-        TR->>TR: Compute 3-sigma baselines\nSHA-256 training hash\nFixed-slice verify hash
-        TR->>REG: Write vN_date.json + update ACTIVE
-        OPS->>REG: python -m src.rollback verify --data ./data
-        REG-->>OPS: ✅ PASS — byte-identical output confirmed
-    end
-
-    API->>REG: Serve predictions + registry + drift status
-    API-->>OPS: Dashboard updated
+    style A fill:#1e3a5f,color:#fff,stroke:#2563eb
+    style B fill:#1a3329,color:#fff,stroke:#16a34a
+    style C fill:#3b1f2b,color:#fff,stroke:#dc2626
+    style D fill:#3b1f2b,color:#fff,stroke:#dc2626
+    style E fill:#1a3329,color:#fff,stroke:#16a34a
+    style F fill:#2d1f3a,color:#fff,stroke:#9333ea
 ```
-
----
-
-### 2.3 Model Registry & Rollback State Machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> Trained : src.train --promote
-
-    state Trained {
-        [*] --> Active
-        Active : ACTIVE pointer → vN_date.json\nSHA-256 training hash stored\nFixed-slice verify hash stored
-    }
-
-    Active --> RollbackInProgress : src.rollback to vPrev
-    RollbackInProgress --> HashVerification : Atomic ACTIVE swap
-    HashVerification --> Active : ✅ PASS\nbyte-identical output
-    HashVerification --> RollbackFailed : ❌ FAIL\nhash mismatch
-
-    Active --> DriftMonitoring : Weekly batch
-    DriftMonitoring --> Active : No drift / cleared
-    DriftMonitoring --> RetrainRequired : 3 consecutive\nflagged weeks
-
-    RetrainRequired --> Trained : New version promoted
-
-    state HashVerification {
-        [*] --> ReRunVerifySlice
-        ReRunVerifySlice --> CompareHashes
-        CompareHashes --> [*]
-    }
-```
-
-
 
 ---
 
