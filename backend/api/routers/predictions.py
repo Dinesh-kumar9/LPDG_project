@@ -106,9 +106,7 @@ def regenerate_predictions(
             models_dir=settings.models_dir,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Prediction regeneration failed: {e}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Prediction regeneration failed: {e}") from e
 
     df = pd.read_csv(out_path)
     return {
