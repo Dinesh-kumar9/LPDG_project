@@ -343,9 +343,7 @@ def test_write_model_artifact_atomic_no_duplicate(real_data_dir, temp_models_dir
         )
 
 
-def test_rollback_verify_passes_for_freshly_trained_artifact(
-    real_data_dir, temp_models_dir
-):
+def test_rollback_verify_passes_for_freshly_trained_artifact(real_data_dir, temp_models_dir):
     """
     Regression test for the train/rollback serialization mismatch bug.
 
