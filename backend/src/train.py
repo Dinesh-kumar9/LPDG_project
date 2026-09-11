@@ -24,12 +24,10 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import logging
 import pathlib
 import sys
-import logging
 from typing import Any, Final
-
-logger = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
@@ -37,6 +35,8 @@ import pandas as pd
 from src.load import (
     load_telemetry,
 )
+
+logger = logging.getLogger(__name__)
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 

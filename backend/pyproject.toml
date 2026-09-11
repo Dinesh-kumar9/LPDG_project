@@ -15,16 +15,17 @@ dependencies = [
     "pandas>=2.2.0",
     "pyarrow>=18.0.0",
     "openpyxl>=3.1.0",
-    "scikit-learn>=1.5.0",
-    "xgboost>=2.1.0",
-    "shap>=0.46.0",
-    "sqlalchemy>=2.0.0",
-    "aiosqlite>=0.20.0",
     "httpx>=0.28.0",
     "python-multipart>=0.0.12",
 ]
 
 [project.optional-dependencies]
+# Phase-3 ML model development extras (not needed for 3-sigma baseline submission)
+ml = [
+    "scikit-learn>=1.5.0",
+    "xgboost>=2.1.0",
+    "shap>=0.46.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-cov>=6.0.0",
@@ -80,6 +81,7 @@ ignore_missing_imports = true
 addopts = "--cov=src --cov=api --cov-fail-under=20 --cov-report=term-missing -v"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 omit = ["tests/*", "conftest.py"]

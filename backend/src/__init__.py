@@ -1,6 +1,11 @@
 """
-LPDG Gateway Visit Prioritization — Source Package.
+LPDG Gateway Visit Prioritization — Core Pipeline Package.
 
-Phase 0 skeleton: all modules present and importable.
-Logic is implemented module-by-module across subsequent phases.
+Modules:
+  load.py         — Single normalization boundary: gateway ID format unification,
+                    Latin-1 decoding, schema invariant enforcement.
+  train.py        — Versioned model artifact creation with cryptographic hashes.
+  predict.py      — Deterministic 120-row CSV inference from a named registry version.
+  drift_monitor.py — Non-blocking schema, population, and distribution drift detection.
+  rollback.py     — Registry controller: list / current / to / verify commands.
 """

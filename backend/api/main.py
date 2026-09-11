@@ -18,10 +18,14 @@ settings = get_settings()
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="MLOps-grade API for Gateway Visit Prioritization, Model Registry, Drift Monitoring, and Rollback.",
+    description=(
+        "MLOps-grade API for Gateway Visit Prioritization, "
+        "Model Registry, Drift Monitoring, and Rollback."
+    ),
 )
 
-# CORS middleware for development
+# CORS: intentionally open for evaluation/demo. In production this would be
+# restricted to the dashboard origin only. See DECISIONS.md ADR 0006.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

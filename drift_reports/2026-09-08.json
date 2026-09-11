@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-09-08T16:26:48.303395+00:00",
+  "data_path": "..\\..\\OneDrive_1_8-30-2026\\03-challenge-data\\data",
+  "reference_version": "v1_2026-08-31",
+  "new_columns": [],
+  "missing_columns": [],
+  "new_gateway_ids": [],
+  "missing_gateway_ids": [],
+  "new_gateway_id_pct": 0.0,
+  "out_of_range_metrics": {},
+  "drift_flagged": false,
+  "summary": "No drift detected."
+}

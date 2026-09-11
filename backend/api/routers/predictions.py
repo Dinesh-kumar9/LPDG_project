@@ -76,6 +76,49 @@ def get_predictions(
     }
 
 
+@router.post("/run")
+def regenerate_predictions(
+    settings: Settings = Depends(get_settings),  # noqa: B008
+) -> dict[str, Any]:
+    """
+    Regenerate predictions.csv from current data and active model version.
+
+    Use this after new telemetry data arrives — drops the cached predictions.csv
+    and re-runs the full prediction pipeline from disk. The container does not
+    need to be restarted; the next GET /api/predictions will serve fresh results.
+
+    DESIGN (ADR 0006): This endpoint exists as a live-session safety net.
+    Training is still CLI-only (POST /api/pipeline/train returns 501). This
+    endpoint only re-runs inference against the already-active model version.
+    """
+    if not settings.data_dir.exists():
+        raise HTTPException(status_code=404, detail="Data directory not found")
+
+    # Remove stale file so predict() always generates a fresh output
+    pred_path = settings.predictions_path
+    if pred_path.exists():
+        pred_path.unlink()
+
+    try:
+        out_path = predict(
+            data_dir=settings.data_dir,
+            out_path=pred_path,
+            models_dir=settings.models_dir,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Prediction regeneration failed: {e}"
+        ) from e
+
+    df = pd.read_csv(out_path)
+    return {
+        "status": "regenerated",
+        "rows": len(df),
+        "weeks": sorted(df["week_start"].unique().tolist()),
+        "output_path": str(out_path),
+    }
+
+
 @router.get("/download")
 def download_predictions_csv(settings: Settings = Depends(get_settings)) -> FileResponse:  # noqa: B008
     if not settings.predictions_path.exists():

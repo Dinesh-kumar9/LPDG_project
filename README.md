@@ -10,6 +10,16 @@
 
 ---
 
+## 📹 Demo Recording
+
+> **Link will be added here before 23:59 IST on Wednesday 16 September.**
+
+The 6–8 minute recording covers: `docker compose up` startup · `validate_submission.py` PASS ·
+model registry (2 versions, ACTIVE pointer) · rollback with SHA-256 verification ·
+drift monitor schema-flag demonstration · DECISIONS.md walkthrough.
+
+---
+
 ## 1. Problem Statement & Economics
 
 LPDG operates a telemetry relay network of ~320 radio gateways for utility meter collection. Gateways experience silent degradation and fail without immediate notification. Field operations are constrained by a **hard cap of 15 site visits per week**.
@@ -81,8 +91,7 @@ When running the pipeline or test suite with real data, supply a dataset directo
 ### Specifying Data Location
 The pipeline does not hardcode data paths in production code:
 - **CLI Flags**: Pass `--data /path/to/data` to any script (`src.train`, `src.drift_monitor`, `src.predict`, `src.rollback`).
-- **Environment Variable**: Set `LPDG_DATA_DIR=/path/to/data`.
-- *Note on default fallback*: In development, local configuration defaulted to a local OneDrive directory (`../../OneDrive_1_8-30-2026/03-challenge-data/data`). You should explicitly pass `--data` or set `LPDG_DATA_DIR` in your environment.
+- **Environment Variable**: Set `LPDG_DATA_DIR=/path/to/data` (see [`backend/.env.example`](backend/.env.example) for all available variables and copy it to `backend/.env` for local development).
 
 ---
 
@@ -193,3 +202,44 @@ python -m src.rollback verify --data "../path/to/data"
 
 See [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) for the exact submission validation,
 drift-monitor, and rollback commands to run during the live session.
+
+---
+
+## 9. How to Tell It Is Working
+
+After `docker compose up` reaches `Application startup complete`:
+
+```bash
+# Health check — should return {"status": "ok", "version": "1.0.0"}
+curl http://localhost:8000/health
+
+# Predictions — should return 120-row JSON with 8 weeks
+curl http://localhost:8000/api/predictions | python -m json.tool | grep total_rows
+
+# Model registry — should list 2 versions with one marked ACTIVE
+curl http://localhost:8000/api/registry
+
+# Drift status — should show consecutive_flagged_weeks and latest report
+curl http://localhost:8000/api/drift/status
+```
+
+### What to Do When It Is Not Working
+
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| `docker compose up` exits immediately | Missing `data/` directory | `mkdir -p data` and place the data bundle inside |
+| `curl /health` → connection refused | Container not ready yet | Wait 30–60 s for uvicorn to start after pipeline runs |
+| `/api/predictions` returns 404 | `predictions.csv` not generated | `curl -X POST http://localhost:8000/api/predictions/run` |
+| `/api/registry` shows no versions | `models/ACTIVE` missing | `docker exec <container> python -m src.train --data /app/data --promote` |
+| `docker compose up` fails on install | Python version mismatch | Ensure Docker is running; the image pins Python 3.12 |
+| Logs show `missing required column` | New telemetry schema | Run drift monitor: `curl -X POST http://localhost:8000/api/drift/run` |
+
+### Regenerate Predictions After New Data Arrives
+
+```bash
+# API (no container restart needed):
+curl -X POST http://localhost:8000/api/predictions/run
+
+# CLI (inside container or with local venv):
+python -m src.predict --data /app/data --out /app/backend/predictions.csv
+```

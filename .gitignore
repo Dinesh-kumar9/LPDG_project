@@ -1,14 +1,21 @@
 # Data — never commit, always mount at runtime
 data/
 *.parquet
-*.csv
 *.xlsx
-predictions*.csv
+
+# CSV data files — do NOT commit raw gateway / telemetry CSVs
+# Exception: backend/predictions.csv IS the submission artifact and MUST be committed.
+*.csv
+!backend/predictions.csv
+
+# Intermediate / broken prediction artefacts — do NOT commit
+predictions_broken.csv
 predictions_baseline.csv
 
-# Model artifacts — committed selectively (the JSON files are ok, but gitignore the raw data hashes)
-# models/*.json   ← we DO commit these (they are part of the registry demo)
-drift_reports/
+# Model artifacts — JSON registry files ARE committed (they are the live demo evidence).
+# models/*.json   ← committed intentionally
+# drift_reports/  ← committed intentionally as MLOps evidence (schema-drift demo)
+!drift_reports/*.json
 
 # Python
 __pycache__/

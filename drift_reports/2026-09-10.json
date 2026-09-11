@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-09-10T17:26:38.077664+00:00",
+  "data_path": "C:\\Users\\DINESH~1\\AppData\\Local\\Temp\\lpdg_drift_demo__kruml5c",
+  "reference_version": "v1_2026-08-31",
+  "new_columns": [],
+  "missing_columns": [
+    "offline_duration_sec"
+  ],
+  "new_gateway_ids": [],
+  "missing_gateway_ids": [],
+  "new_gateway_id_pct": 0.0,
+  "out_of_range_metrics": {},
+  "drift_flagged": true,
+  "summary": "Schema drift: 1 missing column(s), 0 new column(s). Missing: ['offline_duration_sec']; new: []"
+}
