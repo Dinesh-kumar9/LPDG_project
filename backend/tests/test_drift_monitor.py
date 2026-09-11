@@ -139,15 +139,14 @@ def test_silent_gateways_detected(
     )
 
     # The gone-quiet gateway must be visible in the drift report.
-    assert gone_quiet_id in report.silent_gateways, (
-        f"Expected {gone_quiet_id} in silent_gateways, got {report.silent_gateways}"
-    )
+    assert (
+        gone_quiet_id in report.silent_gateways
+    ), f"Expected {gone_quiet_id} in silent_gateways, got {report.silent_gateways}"
     assert report.silent_gateway_count >= 1
 
     # CRITICAL: silent gateways are advisory only — drift_flagged must be False.
     # Setting it True would increment the retrain counter for a scenario that
     # may be a decommission, not a data quality problem.
-    assert report.drift_flagged is False, (
-        "silent_gateways should NOT set drift_flagged — see ADR 0009"
-    )
-
+    assert (
+        report.drift_flagged is False
+    ), "silent_gateways should NOT set drift_flagged — see ADR 0009"
