@@ -28,7 +28,7 @@
     "2026-03-23"
   ],
   "training_data_hash": "sha256:c51ff05d3ac5f63dd3aa9de5c190b739d02f3aadabf19b1a47a61344e040cde3",
-  "fixed_slice_prediction_hash": "sha256:3f5013d8b70428d00a9f32c611dffd66b67d3b4b9a1f6a3ce0b30a8766f31c08",
+  "fixed_slice_prediction_hash": "sha256:9bb8787eb82aa27040c9f4b26dfb45555045750dd711886b41d69bc6134f7872",
   "fixed_slice_date": "2025-11-03",
   "known_gateway_ids": [
     "0202CB0A6B1F",

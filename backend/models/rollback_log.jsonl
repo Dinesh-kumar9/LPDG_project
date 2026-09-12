@@ -4,3 +4,9 @@
 {"timestamp": "2026-09-08T16:43:39.014356+00:00", "from_version": "v2_broken_2026-09-03_2026-09-03", "to_version": "v1_2026-08-31", "reason": "test"}
 {"timestamp": "2026-09-09T06:09:32.846779+00:00", "from_version": "v1_2026-08-31", "to_version": "v2_broken_2026-09-03_2026-09-03", "reason": "audit rehearsal: simulate bad deployment"}
 {"timestamp": "2026-09-09T06:10:08.450603+00:00", "from_version": "v2_broken_2026-09-03_2026-09-03", "to_version": "v1_2026-08-31", "reason": "audit rollback rehearsal: broken model confirmed (sigma=999, all scores=0)"}
+{"timestamp": "2026-09-11T18:21:12.114753+00:00", "from_version": "v1_2026-08-31", "to_version": "v2_broken_2026-09-03_2026-09-03", "reason": "Demo: promote candidate to test rollback"}
+{"timestamp": "2026-09-11T18:21:58.752002+00:00", "from_version": "v2_broken_2026-09-03_2026-09-03", "to_version": "v1_2026-08-31", "reason": "Demo: rollback broken candidate after validation failure"}
+{"timestamp": "2026-09-12T09:25:47.711017+00:00", "from_version": "v1_2026-08-31", "to_version": "v2_broken_2026-09-03_2026-09-03", "reason": "testing"}
+{"timestamp": "2026-09-12T09:35:42.442081+00:00", "from_version": "v2_broken_2026-09-03_2026-09-03", "to_version": "v1_2026-08-31", "reason": "trail"}
+{"timestamp": "2026-09-12T14:21:10.353582+00:00", "from_version": "v1_2026-08-31", "to_version": "v2_broken_2026-09-03_2026-09-03", "reason": "testing V2 promotion"}
+{"timestamp": "2026-09-12T14:21:22.371209+00:00", "from_version": "v2_broken_2026-09-03_2026-09-03", "to_version": "v1_2026-08-31", "reason": "restoring production V1 after test"}

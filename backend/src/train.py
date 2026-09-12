@@ -151,7 +151,13 @@ def rank_week(
         flagged_hours=("flagged", "sum"),
         worst_metric=("worst_metric", lambda s: next((v for v in s if v), "")),
     )
-    return grouped.sort_values("flagged_hours", ascending=False).reset_index(), insufficient
+    return (
+        grouped.sort_values(
+            ["flagged_hours", "gateway_id"],
+            ascending=[False, True],
+        ).reset_index(),
+        insufficient,
+    )
 
 
 def score_all_weeks(

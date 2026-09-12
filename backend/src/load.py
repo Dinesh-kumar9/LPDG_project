@@ -197,6 +197,8 @@ def load_telemetry(data_dir: pathlib.Path, *, validate_schema: bool = True) -> p
         df["ts"] = pd.to_datetime(df["ts_utc"], utc=True)
         df = df.drop(columns=["ts_utc"])
 
+    df = df.drop_duplicates().reset_index(drop=True)
+
     return df
 
 

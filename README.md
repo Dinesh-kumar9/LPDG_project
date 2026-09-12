@@ -41,6 +41,10 @@ curl -s http://localhost:8000/api/predictions | python -m json.tool | grep total
 
 # Confirm active model version
 curl -s http://localhost:8000/api/registry | python -m json.tool | grep active_version
+
+# Validate submission contract (from repository root)
+python backend/validate_submission.py predictions.csv
+# → [PASS] predictions.csv is valid (120 rows, 8 weeks x 15 visits, ranks 1-15 per week)
 ```
 
 **Interactive API documentation:** http://localhost:8000/docs
@@ -397,9 +401,10 @@ bandit -r src/ api/                      # security scan
 | Rank values | 1–15 per week |
 | Score format | Float, 1 decimal place (`%.1f`) |
 
+Validate the generated file from the repository root:
+
 ```bash
-python -m src.predict --data ./data --out ./predictions.csv
-python validate_submission.py
+python backend/validate_submission.py predictions.csv
 ```
 
 ---

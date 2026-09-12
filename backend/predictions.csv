@@ -7,11 +7,11 @@ week_start,rank,gateway_id,score,reason
 2026-02-02,6,0A4E33E2692B,22.0,22 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-02,7,0A6324E3E043,22.0,22 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-02,8,02EBC6CD4398,20.0,20 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-02-02,9,0AA473D2FC17,20.0,20 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-02-02,10,06F2CDBD2C41,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-02-02,11,06FFEC2EFA5E,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
-2026-02-02,12,0A1FB1C98A92,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-02-02,13,0A7AC5BDAF86,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-02,9,06F2CDBD2C41,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-02,10,06FFEC2EFA5E,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
+2026-02-02,11,0A1FB1C98A92,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-02,12,0A7AC5BDAF86,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-02,13,0AA473D2FC17,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-02,14,0EE09EDA649F,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
 2026-02-02,15,0A3528D089D9,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-09,1,0A68F38A6ACF,40.0,40 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
@@ -24,8 +24,8 @@ week_start,rank,gateway_id,score,reason
 2026-02-09,8,0A4E33E2692B,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-09,9,0A6324E3E043,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on reboot_cnt
 2026-02-09,10,0A71A6F9D6C6,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-02-09,11,0E9DC914D8DF,19.0,19 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-02-09,12,06D84598CCB4,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-09,11,06D84598CCB4,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-09,12,0E9DC914D8DF,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-09,13,0A7AC5BDAF86,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-09,14,0230D261A1CD,16.0,16 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
 2026-02-09,15,06787526FEB3,16.0,16 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
@@ -37,8 +37,8 @@ week_start,rank,gateway_id,score,reason
 2026-02-16,6,02D49A34B2FE,29.0,29 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on reboot_cnt
 2026-02-16,7,0A4E33E2692B,25.0,25 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on reboot_cnt
 2026-02-16,8,0E69C64B6E57,25.0,25 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
-2026-02-16,9,0A6324E3E043,24.0,24 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
-2026-02-16,10,06F170E6BB03,23.0,23 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-16,9,06F170E6BB03,23.0,23 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-02-16,10,0A6324E3E043,23.0,23 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
 2026-02-16,11,0A68DF0B3D07,22.0,22 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-02-16,12,06238EE3BE6C,21.0,21 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on reboot_cnt
 2026-02-16,13,0A7AAFDD9E11,21.0,21 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
@@ -73,7 +73,7 @@ week_start,rank,gateway_id,score,reason
 2026-03-02,12,060EE3CB4779,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-02,13,0AA4B065E5A5,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-02,14,0E121B6B8661,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
-2026-03-02,15,0A6324E3E043,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-03-02,15,06AEE181F595,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-09,1,06AEE181F595,25.0,25 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-09,2,0ABC8E60F4C1,25.0,25 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on reboot_cnt
 2026-03-09,3,024DD3A9ADCA,24.0,24 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
@@ -88,7 +88,7 @@ week_start,rank,gateway_id,score,reason
 2026-03-09,12,0E2DEE345837,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-09,13,0E41CF7F74D5,18.0,18 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
 2026-03-09,14,0257E855DBCE,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
-2026-03-09,15,0EE071F7B24A,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-03-09,15,02E12310186C,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
 2026-03-16,1,0A182EFD3C61,40.0,40 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-16,2,060C5773A61B,26.0,26 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
 2026-03-16,3,0A6324E3E043,21.0,21 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
@@ -118,4 +118,4 @@ week_start,rank,gateway_id,score,reason
 2026-03-23,12,0E5A9CEA8093,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-23,13,0EF47B410B41,17.0,17 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
 2026-03-23,14,0217820BFFB2,16.0,16 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on offline_duration_sec
-2026-03-23,15,0AA473D2FC17,15.0,15 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
+2026-03-23,15,06DAF11BD38F,15.0,15 hour(s) beyond 3.0σ of this gateway's own 28-day baseline in the last 7 days; first breach on disconnection_cnt
