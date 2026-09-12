@@ -9,7 +9,7 @@ An offline-first MLOps platform that operationalizes a deterministic 3-sigma gat
 
 ## Quick Start
 
-Two commands. No configuration required.
+Run with one command after cloning. No configuration required.
 
 ```bash
 git clone https://github.com/Dinesh-kumar9/LPDG_project.git
@@ -99,7 +99,7 @@ This submission does not attempt to beat the 3-sigma baseline with a more comple
 | Drift is monitored | Schema, gateway population, metric ranges, and silent gateways checked per run |
 | Retraining has a written policy | See [RETRAIN_POLICY.md](RETRAIN_POLICY.md) — 3 consecutive drift flags or ground-truth accumulation |
 | Docker provides reproducible execution | Single `docker compose up` from cold start |
-| Contract tests guard the API | 58 automated tests across 10 test modules |
+| Contract tests guard the API | 58 automated tests across 9 test modules |
 
 > **Strategic decision (ADR 0008):** The MLOps track allocates 60% of the evaluation score to operational infrastructure. A deterministic, auditable, rollback-tested pipeline using the baseline earns more evaluative signal than a slightly better model in a notebook. See [DECISIONS.md](DECISIONS.md) for the full rationale.
 
@@ -364,7 +364,7 @@ mypy src/ api/                           # strict type checking
 bandit -r src/ api/                      # security scan
 ```
 
-**58 tests across 9 test modules (80.76% statement coverage):**
+**58 tests across 9 test modules:**
 
 | Module | Tests | What is verified |
 |---|---|---|
