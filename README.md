@@ -480,6 +480,8 @@ See [DECISIONS.md ADR 0006](DECISIONS.md) for the full roadmap.
 
 ## Demo Flow
 
+**Video Demonstration:** [Watch the 7–8 minute MLOps demonstration](https://drive.google.com/file/d/1Ptray9EvWmx4MESkM-dZJtHof5KeHx9S/view?usp=drive_link)
+
 Suggested sequence for the evaluation screen recording:
 
 1. `docker compose up` — observe startup: training, drift check, prediction generation
