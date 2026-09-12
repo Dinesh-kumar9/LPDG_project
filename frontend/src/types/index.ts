@@ -1,4 +1,4 @@
-﻿// ── Shared TypeScript types for LPDG Gateway Dashboard ────────────────────────
+// ── Shared TypeScript types for LPDG Gateway Dashboard ────────────────────────
 
 export interface Prediction {
   week_start: string;
@@ -45,6 +45,7 @@ export interface DriftReport {
 }
 
 export interface ActionFeedback {
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'warning';
   message: string;
 }
+

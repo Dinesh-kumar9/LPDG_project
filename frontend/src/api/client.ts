@@ -1,4 +1,4 @@
-﻿// ── API client — single source of truth for all backend calls ─────────────────
+// ── API client — single source of truth for all backend calls ─────────────────
 // Base URL is empty string so calls are relative to the host that serves the
 // frontend (FastAPI mounts the built dist/ at "/", so /api/* routes resolve
 // correctly in both dev-proxy and production-Docker scenarios).
@@ -78,6 +78,14 @@ export const executeRollback = (to_version: string, reason: string) =>
   });
 
 export const verifyRollback = (version_id?: string) =>
-  post<{ version_id: string; verified: boolean; status: string }>(
+  post<{
+    version_id: string;
+    verified: boolean;
+    status: string;
+    sigma: number;
+    intentionally_broken: boolean;
+    note: string;
+  }>(
     `/api/rollback/verify${version_id ? `?version_id=${version_id}` : ''}`
   );
+

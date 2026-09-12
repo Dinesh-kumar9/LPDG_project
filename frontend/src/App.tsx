@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, RotateCcw, Database, Layers, CheckCircle2, AlertTriangle, RefreshCw, Radio, ShieldCheck } from 'lucide-react';
 
 import {
@@ -80,8 +80,11 @@ export function App() {
     if (!targetVersion || !rollbackReason) { setFeedback({ type: 'error', message: 'Select a version and provide an audit reason.' }); return; }
     setActionLoading(true);
     try {
-      await executeRollback(targetVersion, rollbackReason);
-      setFeedback({ type: 'success', message: `Rolled back to ${targetVersion}. ACTIVE pointer updated.` });
+      const result = await executeRollback(targetVersion, rollbackReason);
+      setFeedback({
+        type: 'success',
+        message: `✓ Rolled back: ${result.from_version} → ${result.to_version}. ACTIVE pointer updated. Predictions regenerated from new active model.`,
+      });
       setRollbackReason('');
       await fetchAll();
     } catch (err) {
@@ -93,9 +96,23 @@ export function App() {
     setActionLoading(true);
     try {
       const data = await verifyRollback();
-      setFeedback(data.verified
-        ? { type: 'success', message: `PASS — ${data.version_id} SHA-256 matches fixed-slice hash.` }
-        : { type: 'error', message: `FAIL — Hash mismatch on ${data.version_id}.` });
+      if (data.verified) {
+        setFeedback({
+          type: 'success',
+          message: `✓ PASS — ${data.version_id} (σ=${data.sigma}) · ${data.note}`,
+        });
+      } else if (data.intentionally_broken) {
+        // Amber warning — this is an expected demo failure, not a system error
+        setFeedback({
+          type: 'warning',
+          message: `⚠ INTENTIONAL DEMO FAILURE — ${data.note}`,
+        });
+      } else {
+        setFeedback({
+          type: 'error',
+          message: `✗ FAIL — ${data.note}`,
+        });
+      }
     } catch (err) {
       setFeedback({ type: 'error', message: (err as Error).message || 'Verification error.' });
     } finally { setActionLoading(false); }
@@ -161,12 +178,32 @@ export function App() {
 
         {/* Feedback banner */}
         {feedback && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderRadius: 12, fontSize: 13, fontWeight: 500, background: feedback.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)', border: `1px solid ${feedback.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}`, color: feedback.type === 'success' ? '#10b981' : '#f43f5e' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-              {feedback.message}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 18px', borderRadius: 12, fontSize: 13, fontWeight: 500,
+            background: feedback.type === 'success'
+              ? 'rgba(16,185,129,0.1)'
+              : feedback.type === 'warning'
+              ? 'rgba(245,158,11,0.1)'
+              : 'rgba(244,63,94,0.1)',
+            border: `1px solid ${
+              feedback.type === 'success'
+                ? 'rgba(16,185,129,0.3)'
+                : feedback.type === 'warning'
+                ? 'rgba(245,158,11,0.35)'
+                : 'rgba(244,63,94,0.3)'
+            }`,
+            color: feedback.type === 'success' ? '#10b981' : feedback.type === 'warning' ? '#f59e0b' : '#f43f5e',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1 }}>
+              {feedback.type === 'success'
+                ? <CheckCircle2 size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+                : feedback.type === 'warning'
+                ? <AlertTriangle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+                : <AlertTriangle size={16} style={{ marginTop: 1, flexShrink: 0 }} />}
+              <span style={{ lineHeight: 1.5 }}>{feedback.message}</span>
             </div>
-            <button onClick={() => setFeedback(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 11, opacity: 0.7, fontWeight: 600, letterSpacing: '0.05em' }}>DISMISS</button>
+            <button onClick={() => setFeedback(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 11, opacity: 0.7, fontWeight: 600, letterSpacing: '0.05em', marginLeft: 16, flexShrink: 0 }}>DISMISS</button>
           </div>
         )}
 

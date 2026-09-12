@@ -77,13 +77,45 @@ def verify_version(
         raise HTTPException(status_code=400, detail="No active version to verify")
 
     try:
+        from src.train import load_model_artifact
+
+        artifact = load_model_artifact(active, settings.models_dir)
+        sigma = artifact.get("parameters", {}).get("sigma", 3.0)
+        # A model is intentionally broken for demo purposes when sigma is
+        # extremely high (making the anomaly threshold unreachable).
+        intentionally_broken = sigma >= 100
+
         passed = verify(
             data_dir=settings.data_dir, version_id=active, models_dir=settings.models_dir
         )
+
+        if passed:
+            note = (
+                f"SHA-256 of fixed-slice predictions matches training-time hash. "
+                f"Model {active} (sigma={sigma}) is producing byte-identical output."
+            )
+        elif intentionally_broken:
+            note = (
+                f"EXPECTED DEMO FAILURE — {active} uses sigma={sigma:.0f}, "
+                f"making the anomaly threshold unreachable. "
+                f"All scores are 0, producing different predictions than the stored hash. "
+                f"This intentional hash mismatch demonstrates broken-model detection. "
+                f"Roll back to v1_2026-08-31 (sigma=3) to restore normal operation."
+            )
+        else:
+            note = (
+                f"Hash mismatch on {active}. "
+                f"The model is producing different predictions than at training time. "
+                f"Consider rolling back to a known-good version."
+            )
+
         return {
             "version_id": active,
             "verified": passed,
             "status": "PASS" if passed else "FAIL",
+            "sigma": sigma,
+            "intentionally_broken": intentionally_broken,
+            "note": note,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Verification failed with error: {e}") from e
