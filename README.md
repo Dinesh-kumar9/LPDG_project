@@ -5,6 +5,8 @@
 
 An offline-first MLOps platform that operationalizes a deterministic 3-sigma gateway prioritization baseline with versioned model artifacts, reproducible inference, drift monitoring, cryptographic verification, rollback, an append-only audit trail, and an operations dashboard.
 
+**Video Demonstration:** [Watch the 7–8 minute MLOps demonstration](https://drive.google.com/file/d/1Ptray9EvWmx4MESkM-dZJtHof5KeHx9S/view?usp=drive_link)
+
 ---
 
 ## Quick Start
@@ -479,8 +481,6 @@ See [DECISIONS.md ADR 0006](DECISIONS.md) for the full roadmap.
 ---
 
 ## Demo Flow
-
-**Video Demonstration:** [Watch the 7–8 minute MLOps demonstration](https://drive.google.com/file/d/1Ptray9EvWmx4MESkM-dZJtHof5KeHx9S/view?usp=drive_link)
 
 Suggested sequence for the evaluation screen recording:
 
