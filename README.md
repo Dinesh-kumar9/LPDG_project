@@ -1,4 +1,4 @@
-﻿# LPDG Gateway Prioritization
+# LPDG Gateway Prioritization
 ### Deterministic MLOps Platform for Network Reliability Operations
 
 **LPDG Innovation Hub Selection Challenge 2026 — MLOps Track**
@@ -33,7 +33,7 @@ After the container starts, open **http://localhost:8000** for the operations da
 ```bash
 # Health check
 curl http://localhost:8000/health
-# → {"status": "ok", "version": "0.1.0"}
+# → {"status": "ok", "version": "1.0.0"}
 
 # Confirm 120 prediction rows
 curl -s http://localhost:8000/api/predictions | python -m json.tool | grep total_rows
@@ -180,12 +180,13 @@ backend/models/
 ```json
 {
   "version_id": "v1_2026-08-31",
-  "model_type": "3sigma_baseline",
+  "model_type": "rule_based_3sigma",
   "trained_at": "2026-08-31T...",
   "parameters": { "sigma": 3.0, "baseline_days": 28, "recent_days": 7, "..." : "..." },
   "training_data_hash": "sha256:c51ff05d...",
   "fixed_slice_prediction_hash": "sha256:92f7f415...",
-  "gateway_population": { "known_ids": ["..."], "total_count": 320 },
+  "known_gateway_ids": ["..."],
+  "known_gateway_count": 320,
   "drift_reference": { "metric_maxima": {}, "schema_columns": [] }
 }
 ```
@@ -363,11 +364,11 @@ mypy src/ api/                           # strict type checking
 bandit -r src/ api/                      # security scan
 ```
 
-**58 tests across 10 test modules (80.93% statement coverage):**
+**58 tests across 9 test modules:**
 
 | Module | Tests | What is verified |
 |---|---|---|
-| `test_train.py` | 18 | Artifact schema, hash determinism, CRLF/LF invariant, rollback round-trip |
+| `test_train.py` | 15 | Artifact schema, hash determinism, CRLF/LF invariant, rollback round-trip |
 | `test_drift_monitor.py` | 11 | Schema/population/range drift, silent gateways, historical anchor |
 | `test_scoring.py` | 6 | 3-sigma flagging, threshold edge cases, score accumulation |
 | `test_consecutive_drift.py` | 9 | Streak counting, reset on clean week, corrupted report handling |
