@@ -364,7 +364,7 @@ mypy src/ api/                           # strict type checking
 bandit -r src/ api/                      # security scan
 ```
 
-**58 tests across 9 test modules:**
+**58 tests across 9 test modules (80.76% statement coverage):**
 
 | Module | Tests | What is verified |
 |---|---|---|
