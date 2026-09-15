@@ -1,5 +1,5 @@
-# Retrain Policy â€” LPDG Gateway Prioritization
-**LPDG Innovation Hub Selection Challenge 2026 â€” MLOps Track**
+# Retrain Policy — LPDG Gateway Prioritization
+**LPDG Innovation Hub Selection Challenge 2026 — MLOps Track**
 
 ---
 
@@ -10,7 +10,7 @@ Model retraining is an operational decision that consumes computational resource
 **Core Policy Invariants:**
 1. Retraining is triggered by objective criteria, but promotion to `ACTIVE` is gated by validation.
 2. The drift monitor informs retraining; it **never** triggers retraining automatically.
-3. Every retrained model must pass the â‚¬380/â‚¬600 economic validation gate before promotion.
+3. Every retrained model must pass the €380/€600 economic validation gate before promotion.
 
 ---
 
@@ -23,7 +23,7 @@ Retraining is scheduled under either of two conditions:
 - **Rationale:** Transient single-week spikes (e.g. temporary regional weather events, cellular base-station maintenance) should not invalidate the model. Three consecutive weeks indicate structural changes in gateway telemetry behavior or network topology.
 
 ### Trigger B: Ground-Truth Accumulation (Cadence-Driven)
-- **Condition:** Monthly cadence, or upon receipt of **â‰¥50 newly resolved field visit outcomes** in `field_visits.csv`.
+- **Condition:** Monthly cadence, or upon receipt of **≥50 newly resolved field visit outcomes** in `field_visits.csv`.
 - **Rationale:** Ground truth from technician visits (`"Fehler behoben"` vs. `"Kein Fehler gefunden"`) accumulates gradually. Retraining on new ground truth updates historical gateway reliability priors.
 
 ---
