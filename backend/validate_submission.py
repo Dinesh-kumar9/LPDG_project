@@ -4,9 +4,9 @@ import csv
 import pathlib
 import sys
 
-pred_path = pathlib.Path("predictions.csv")
+pred_path = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path("predictions.csv")
 if not pred_path.exists():
-    print("ERROR: predictions.csv not found")
+    print(f"ERROR: {pred_path} not found")
     sys.exit(1)
 
 REQUIRED_COLS = {"week_start", "rank", "gateway_id", "score", "reason"}

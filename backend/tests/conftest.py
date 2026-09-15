@@ -4,6 +4,7 @@ Pytest configuration and fixtures.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import sys
 
@@ -16,9 +17,12 @@ BACKEND_ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-# Project root containing original OneDrive test data
-PROJECT_ROOT = BACKEND_ROOT.parent.parent
-SAMPLE_DATA_DIR = PROJECT_ROOT / "OneDrive_1_8-30-2026" / "03-challenge-data" / "data"
+# Real challenge data directory.
+# Override by setting LPDG_REAL_DATA_DIR in the environment.
+# Tests that use real_data_dir skip automatically when the directory is absent.
+SAMPLE_DATA_DIR = pathlib.Path(
+    os.environ.get("LPDG_REAL_DATA_DIR", "/nonexistent/lpdg-challenge-data")
+)
 
 
 @pytest.fixture

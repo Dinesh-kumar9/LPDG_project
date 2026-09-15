@@ -1,6 +1,6 @@
 {
   "checked_at": "2026-09-10T17:26:38.077664+00:00",
-  "data_path": "C:\\Users\\DINESH~1\\AppData\\Local\\Temp\\lpdg_drift_demo__kruml5c",
+  "data_path": "/tmp/lpdg_drift_demo",
   "reference_version": "v1_2026-08-31",
   "new_columns": [],
   "missing_columns": [
