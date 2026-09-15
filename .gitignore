@@ -54,9 +54,6 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 
-# Challenge documents — never commit the brief or exam materials
-*.pdf
-
 # Secrets
 .env
 .env.local
