@@ -68,9 +68,7 @@ def predict(
     ]
 
     logger.info("Using model version: %s (%s)", artifact["version_id"], artifact["model_type"])
-    logger.info(
-        "Parameters: sigma=%s, baseline_days=%s", params["sigma"], params["baseline_days"]
-    )
+    logger.info("Parameters: sigma=%s, baseline_days=%s", params["sigma"], params["baseline_days"])
 
     telemetry = load_telemetry(data_dir)
     logger.info("Loaded %s telemetry rows.", f"{len(telemetry):,}")

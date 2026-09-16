@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import pathlib
 
-import pandas as pd
 import pytest
 
 from src.load import load_telemetry
@@ -21,12 +20,13 @@ from src.predict import predict
 from src.rollback import rollback_to
 from src.train import write_model_artifact
 
-
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def minimal_models_dir(tmp_path: pathlib.Path, synthetic_telemetry_dir: pathlib.Path) -> pathlib.Path:
+def minimal_models_dir(
+    tmp_path: pathlib.Path, synthetic_telemetry_dir: pathlib.Path
+) -> pathlib.Path:
     """A models dir with one promoted version, built from synthetic data."""
     models_dir = tmp_path / "models"
     telemetry = load_telemetry(synthetic_telemetry_dir)

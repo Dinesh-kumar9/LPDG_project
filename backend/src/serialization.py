@@ -48,7 +48,7 @@ def serialize_predictions_canonical(predictions: pd.DataFrame) -> bytes:
     ).reset_index(drop=True)
     df["rank"] = df.groupby("week_start").cumcount() + 1
     df = df[["week_start", "rank", "gateway_id", "score", "reason"]]
-    return df.to_csv(index=False, float_format="%.1f", lineterminator="\n").encode("utf-8")
+    return str(df.to_csv(index=False, float_format="%.1f", lineterminator="\n")).encode("utf-8")
 
 
 def hash_predictions_canonical(predictions: pd.DataFrame) -> str:
