@@ -4,8 +4,9 @@ data/
 *.xlsx
 
 # CSV data files — do NOT commit raw gateway / telemetry CSVs
-# Exception: backend/predictions.csv IS the submission artifact and MUST be committed.
+# Exception: predictions.csv and backend/predictions.csv are submission artifacts and MUST be committed.
 *.csv
+!predictions.csv
 !backend/predictions.csv
 
 # Intermediate / broken prediction artefacts — do NOT commit
