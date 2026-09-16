@@ -77,7 +77,7 @@ Promote if: Net_Cost(candidate) <= Net_Cost(active)
 
 1. **Training:** Candidate model trained with `python -m src.train --version <id>` (creates `models/<id>.json` without modifying `models/ACTIVE`).
 2. **Evaluation:** Evaluated on validation slice against cost baseline.
-3. **Promotion:** Explicit promotion via `python -m src.train --promote` or `POST /api/pipeline/train` with `promote: true`.
+3. **Promotion:** Explicit promotion via `python -m src.train --promote --version <id>` or via registry pointer swap `python -m src.rollback to <id> --reason "..."` (or `POST /api/rollback/execute`). Training via HTTP is intentionally disabled (`POST /api/pipeline/train` returns 501 Not Implemented).
 4. **Immediate Rollback Trigger:** If live field operations report a hit-rate regression across 2 consecutive operating weeks:
    ```bash
    python -m src.rollback to <previous_version> --reason "Regressed hit rate in operating weeks"

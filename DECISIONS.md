@@ -173,7 +173,7 @@ Ranked by estimated impact on the €600/week cost metric:
 ## ADR 0007: Deliberate Exclusion of New and Gone-Quiet Gateways
 
 ### Context
-The 3-sigma scoring logic requires per-gateway historical statistics. A gateway with fewer than 24 hours in the baseline window produces an unreliable standard deviation (std from 1–23 points vs. 24Ã—28=672 in the normal case). Two failure modes were identified during audit:
+The 3-sigma scoring logic requires per-gateway historical statistics. A gateway with fewer than 24 hours in the baseline window produces an unreliable standard deviation (std from 1–23 points vs. 24 x 28 = 672 in the normal case). Two failure modes were identified during audit:
 - **New gateway** (< 28 days history): baseline std is computed from too few points; flagging decisions would be spurious.
 - **Gone-quiet gateway** (zero rows in the recent 7-day window): no recent observations means 0 flagged hours; the gateway simply scores 0.
 

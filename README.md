@@ -105,7 +105,7 @@ This submission does not attempt to beat the 3-sigma baseline with a more comple
 | Drift is monitored | Schema, gateway population, metric ranges, and silent gateways checked per run |
 | Retraining has a written policy | See [RETRAIN_POLICY.md](RETRAIN_POLICY.md) — 3 consecutive drift flags or ground-truth accumulation |
 | Docker provides reproducible execution | Single `docker compose up` from cold start |
-| Contract tests guard the API | 58 automated tests across 9 test modules |
+| Contract tests guard the API | 62 automated tests across 10 test modules |
 
 > **Strategic decision (ADR 0008):** The MLOps track allocates 60% of the evaluation score to operational infrastructure. A deterministic, auditable, rollback-tested pipeline using the baseline earns more evaluative signal than a slightly better model in a notebook. See [DECISIONS.md](DECISIONS.md) for the full rationale.
 
@@ -374,13 +374,13 @@ The React dashboard at `http://localhost:8000` is an operations layer. It does n
 
 ```bash
 cd backend
-pytest                                    # 58 tests, coverage report
+pytest                                    # 62 tests, coverage report
 ruff check . && ruff format --check .    # lint + format
 mypy src/ api/                           # strict type checking
 bandit -r src/ api/                      # security scan
 ```
 
-**58 tests across 9 test modules:**
+**62 tests across 10 test modules:**
 
 | Module | Tests | What is verified |
 |---|---|---|
@@ -390,7 +390,8 @@ bandit -r src/ api/                      # security scan
 | `test_consecutive_drift.py` | 9 | Streak counting, reset on clean week, corrupted report handling |
 | `test_load.py` | 8 | ID normalization, Latin-1 encoding, cross-table join validation |
 | `test_api.py` | 5 | FastAPI routes, predictions enrichment, rollback API |
-| `test_rollback.py` | 2 | Full lifecycle, invalid version rejection |
+| `test_rollback.py` | 3 | Full lifecycle (real + synthetic), invalid version rejection |
+| `test_error_paths.py` | 3 | Missing active artifact, empty telemetry directory, missing rollback target |
 | `test_determinism.py` | 1 | Byte-identical output across two predict runs |
 | `test_portable_pipeline.py` | 1 | Train → predict → validate full in-memory pipeline |
 
