@@ -9,6 +9,16 @@ An offline-first MLOps platform that operationalizes a deterministic 3-sigma gat
 
 ---
 
+## Documentation
+
+The following documents describe the implementation, engineering decisions, AI-assisted development, and MLOps lifecycle:
+
+- **[DECISIONS.md](DECISIONS.md)** — Architecture decisions, alternatives considered, trade-offs, and limitations.
+- **[AI-USAGE.md](AI-USAGE.md)** — AI assistance used during development, human/AI responsibility boundary, and an AI-generated issue caught during review.
+- **[RETRAIN_POLICY.md](RETRAIN_POLICY.md)** — Model retraining, validation, promotion, regression, and rollback policy.
+
+---
+
 ## Quick Start
 
 Run with one command after cloning. No configuration required.
