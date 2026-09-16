@@ -100,7 +100,7 @@ This submission does not attempt to beat the 3-sigma baseline with a more comple
 | Inference never retrains | `predict.py` reads a frozen artifact; no compute surprise during serving |
 | Training data is fingerprinted | SHA-256 of the canonical telemetry DataFrame stored as `training_data_hash` |
 | Predictions are fingerprinted | SHA-256 of a fixed historical prediction slice stored as `fixed_slice_prediction_hash` |
-| Rollback is a real operation | ACTIVE pointer swap + prediction regeneration + SHA-256 re-verification |
+| Rollback is a real operation | ACTIVE pointer swap (CLI) or pointer swap + auto-predict (API `POST /api/rollback/execute`) + SHA-256 re-verification |
 | Rollback has an audit trail | Every version change appended to `models/rollback_log.jsonl` — never truncated |
 | Drift is monitored | Schema, gateway population, metric ranges, and silent gateways checked per run |
 | Retraining has a written policy | See [RETRAIN_POLICY.md](RETRAIN_POLICY.md) — 3 consecutive drift flags or ground-truth accumulation |
@@ -287,7 +287,14 @@ The drift monitor runs at container startup and on demand via `POST /api/drift/r
 
 ## Rollback
 
-Rollback is not a UI label change. It changes the ACTIVE model pointer and re-runs deterministic inference from the new version's stored parameters.
+Rollback changes the ACTIVE model pointer atomically and appends an immutable audit entry before
+the pointer is updated (crash-consistent ordering).
+
+> **CLI vs. API behaviour:**
+> - `python -m src.rollback to <version> --reason "..."` — swaps the ACTIVE pointer only.
+>   Run `python -m src.predict --data ./data` separately to regenerate `predictions.csv`.
+> - `POST /api/rollback/execute` — swaps the pointer **and** immediately re-runs `predict()`
+>   so the API's `/predictions` endpoint returns the restored version's output automatically.
 
 ### Demonstrated Rollback Lifecycle
 
@@ -296,14 +303,17 @@ V1 (σ=3.0) ACTIVE → predictions meaningful, verify PASS
   ↓
 Promote V2 (σ=999) — intentionally broken for regression demo
   ↓
-V2 produces all-zero scores — threshold unreachable, rankings meaningless
+V2 produces all-zero scores — sigma=999 means no gateway ever exceeds threshold
   ↓
-Verify V2 → FAIL — hash mismatch detected (expected for this demo artifact)
+Verify V2 → PASS — sha256:9bb... matches (self-consistent: same bad output as at training)
+             NOTE: verify proves *consistency*, not quality.
+             The FAIL in this demo comes from verifying V1 while ACTIVE=V2.
   ↓
 Rollback: ACTIVE ← V1
 Audit entry appended to rollback_log.jsonl
   ↓
-predictions.csv regenerated from V1 parameters
+CLI: run `python -m src.predict --data ./data` to regenerate predictions.csv
+API: POST /api/rollback/execute regenerates automatically
   ↓
 Verify V1 → PASS — sha256:92f7f415... matches exactly
   ↓

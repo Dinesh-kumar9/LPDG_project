@@ -26,17 +26,20 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import logging
 import pathlib
 import sys
 
 from src.load import load_telemetry
+from src.serialization import hash_predictions_canonical
 from src.train import (
     MODELS_DIR,
     VERIFY_SLICE_DATE,
-    _hash_predictions_canonical,
     load_model_artifact,
     score_all_weeks,
 )
+
+logger = logging.getLogger(__name__)
 
 # ─── Registry inspection ──────────────────────────────────────────────────────
 
@@ -149,9 +152,9 @@ def rollback_to(
     tmp_path.write_text(to_version, encoding="utf-8")
     tmp_path.replace(active_path)
 
-    print(f"[OK] Rolled back: {from_version} -> {to_version}")
-    print(f"  Reason: {reason}")
-    print(f"  Logged to {log_path}")
+    logger.info("[OK] Rolled back: %s -> %s", from_version, to_version)
+    logger.info("  Reason: %s", reason)
+    logger.info("  Logged to %s", log_path)
 
 
 # ─── Verify ───────────────────────────────────────────────────────────────────
@@ -183,14 +186,14 @@ def verify(
     ver = artifact["version_id"]
 
     if not expected_hash:
-        print(f"[WARN] No fixed_slice_prediction_hash stored in {ver}. Cannot verify.")
+        logger.warning("No fixed_slice_prediction_hash stored in %s. Cannot verify.", ver)
         return False
 
     params = artifact["parameters"]
 
-    print(f"Verifying model version: {ver}")
-    print(f"Fixed slice date: {VERIFY_SLICE_DATE}")
-    print(f"Expected hash: {expected_hash}")
+    logger.info("Verifying model version: %s", ver)
+    logger.info("Fixed slice date: %s", VERIFY_SLICE_DATE)
+    logger.info("Expected hash: %s", expected_hash)
 
     telemetry = load_telemetry(data_dir)
 
@@ -205,14 +208,14 @@ def verify(
 
     # Use the canonical hash path — same function as training and predict.py.
     # This is what makes training hash == rollback verify hash.
-    computed_hash = _hash_predictions_canonical(predictions)
-    print(f"Computed hash: {computed_hash}")
+    computed_hash = hash_predictions_canonical(predictions)
+    logger.info("Computed hash: %s", computed_hash)
 
     if computed_hash == expected_hash:
-        print(f"[OK] PASS -- {ver} produces byte-identical output to training time.")
+        logger.info("[OK] PASS -- %s produces byte-identical output to training time.", ver)
         return True
     else:
-        print("[FAIL] hash mismatch. The active version does not reproduce expected output.")
+        logger.warning("[FAIL] Hash mismatch. Active version does not reproduce expected output.")
         return False
 
 

@@ -20,17 +20,19 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import logging
 import pathlib
 import sys
 
 from src.load import load_telemetry
+from src.serialization import hash_predictions_file, serialize_predictions_canonical
 from src.train import (
     MODELS_DIR,
-    _hash_predictions_csv,
-    _serialize_predictions_canonical,
     load_model_artifact,
     score_all_weeks,
 )
+
+logger = logging.getLogger(__name__)
 
 # ─── Prediction ────────────────────────────────────────────────────────────────
 
@@ -65,11 +67,13 @@ def predict(
         )
     ]
 
-    print(f"Using model version: {artifact['version_id']} ({artifact['model_type']})")
-    print(f"Parameters: sigma={params['sigma']}, baseline_days={params['baseline_days']}")
+    logger.info("Using model version: %s (%s)", artifact["version_id"], artifact["model_type"])
+    logger.info(
+        "Parameters: sigma=%s, baseline_days=%s", params["sigma"], params["baseline_days"]
+    )
 
     telemetry = load_telemetry(data_dir)
-    print(f"Loaded {len(telemetry):,} telemetry rows.")
+    logger.info("Loaded %s telemetry rows.", f"{len(telemetry):,}")
 
     predictions = score_all_weeks(
         telemetry=telemetry,
@@ -83,14 +87,14 @@ def predict(
     # _hash_predictions_canonical() hashes, ensuring the file on disk is
     # byte-for-byte consistent with the stored fixed_slice_prediction_hash.
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    canonical_bytes = _serialize_predictions_canonical(predictions)
+    canonical_bytes = serialize_predictions_canonical(predictions)
     out_path.write_bytes(canonical_bytes)
 
     row_count = len(predictions)
     week_count = predictions["week_start"].nunique()
-    file_hash = _hash_predictions_csv(out_path)
-    print(f"[OK] Wrote {out_path} -- {row_count} rows over {week_count} weeks")
-    print(f"  Output hash: {file_hash}")
+    file_hash = hash_predictions_file(out_path)
+    logger.info("[OK] Wrote %s — %d rows over %d weeks", out_path, row_count, week_count)
+    logger.info("  Output hash: %s", file_hash)
 
     return out_path
 

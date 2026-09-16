@@ -188,9 +188,10 @@ def score_all_weeks(
                 excluded,
             )
         if len(ranked) < VISITS_PER_WEEK:
-            raise SystemExit(
-                f"Only {len(ranked)} gateways have data before {monday}. "
-                "Cannot produce 15 ranked gateways."
+            raise RuntimeError(
+                f"week={monday}: only {len(ranked)} gateways have sufficient baseline "
+                f"history. Cannot produce {VISITS_PER_WEEK} ranked gateways. "
+                "Check that the data directory contains telemetry before this date."
             )
         top = ranked.head(VISITS_PER_WEEK)
         for rank, rec in enumerate(top.to_dict(orient="records"), 1):
@@ -335,12 +336,13 @@ def _next_version_id(version_name: str | None, models_dir: pathlib.Path) -> str:
 
 def write_model_artifact(
     telemetry: pd.DataFrame,
-    models_dir: pathlib.Path,
+    models_dir: pathlib.Path = MODELS_DIR,
     version_name: str | None = None,
     sigma: float = DEFAULT_SIGMA,
     baseline_days: int = DEFAULT_BASELINE_DAYS,
     recent_days: int = DEFAULT_RECENT_DAYS,
     promote: bool = False,
+    scored_weeks_override: list[dt.date] | None = None,
 ) -> pathlib.Path:
     """
     Train the model and write a versioned JSON artifact to models_dir.
@@ -386,8 +388,14 @@ def write_model_artifact(
         "metric_maxima": {metric: float(telemetry[metric].max()) for metric in METRICS},
     }
 
-    # Build the scored_weeks list for documentation (not needed at predict time).
-    scored_weeks = [(dt.date(2026, 2, 2) + dt.timedelta(days=7 * i)).isoformat() for i in range(8)]
+    # Build the scored_weeks list — use caller-supplied weeks or the 8-week
+    # challenge window (2 Feb – 23 Mar 2026) as the default.
+    if scored_weeks_override:
+        scored_weeks = [d.isoformat() for d in scored_weeks_override]
+    else:
+        scored_weeks = [
+            (dt.date(2026, 2, 2) + dt.timedelta(days=7 * i)).isoformat() for i in range(8)
+        ]
 
     artifact: dict[str, object] = {
         "version_id": version_id,
@@ -421,7 +429,7 @@ def write_model_artifact(
 
     tmp_dir.rmdir() if not any(tmp_dir.iterdir()) else None
 
-    print(f"[OK] Model artifact written: {artifact_path}")
+    logger.info("[OK] Model artifact written: %s", artifact_path)
 
     if promote:
         _set_active(version_id, models_dir)
@@ -435,7 +443,7 @@ def _set_active(version_id: str, models_dir: pathlib.Path) -> None:
     tmp_path = models_dir / f".ACTIVE.{dt.datetime.now(dt.UTC).timestamp()}.tmp"
     tmp_path.write_text(version_id, encoding="utf-8")
     tmp_path.replace(active_path)
-    print(f"[OK] ACTIVE -> {version_id}")
+    logger.info("[OK] ACTIVE -> %s", version_id)
 
 
 def load_model_artifact(
@@ -501,11 +509,22 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Set this version as ACTIVE after writing. Omit to train without promoting.",
     )
+    parser.add_argument(
+        "--scored-weeks",
+        nargs="+",
+        type=lambda s: dt.date.fromisoformat(s),
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "Override the weeks to score (space-separated ISO dates, must be Mondays). "
+            "Default: the 8 challenge weeks 2026-02-02 … 2026-03-23."
+        ),
+    )
     args = parser.parse_args(argv)
 
-    print(f"Loading telemetry from {args.data} ...")
+    logger.info("Loading telemetry from %s ...", args.data)
     telemetry = load_telemetry(args.data)
-    print(f"  Loaded {len(telemetry):,} rows, {telemetry['gateway_id'].nunique()} gateways.")
+    logger.info("  Loaded %s rows, %d gateways.", f"{len(telemetry):,}", telemetry["gateway_id"].nunique())
 
     write_model_artifact(
         telemetry=telemetry,
@@ -513,6 +532,7 @@ def main(argv: list[str] | None = None) -> int:
         version_name=args.version,
         sigma=args.sigma,
         promote=args.promote,
+        scored_weeks_override=args.scored_weeks,
     )
     return 0
 
