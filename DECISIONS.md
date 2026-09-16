@@ -129,7 +129,11 @@ The drift monitor strictly logs findings and sets `drift_flagged = True`. It **n
 **Automatic retrain-on-flag** — trigger `src/train.py --promote` whenever the drift monitor sets `drift_flagged = True`.
 
 ### Why Rejected
-Auto-retraining on a single anomalous week promotes a new model during the same operational event that caused the drift flag. If a sensor fault or data pipeline hiccup produces one week of unusual telemetry, auto-retraining learns from the artifact and the "new model" is worse than the old one — with no human review checkpoint to catch it. We demonstrated this exact failure in the `v2_broken` training cycle: a sigma=999 model was promoted and immediately failed `rollback verify`. The retrain policy's 3-consecutive-week threshold exists to separate real distributional shift from noise. Human sign-off before promotion is the control that makes rollback meaningful.
+Auto-retraining on a single anomalous week promotes a new model during the same operational event that caused the drift flag. If a sensor fault or data pipeline hiccup produces one week of unusual telemetry, auto-retraining learns from the artifact and the "new model" is worse than the old one — with no human review checkpoint to catch it.
+
+We demonstrated this failure mode with the `v2_broken` training cycle: a sigma=999 model was promoted and produced operationally useless all-zero scores (sigma=999 means no gateway’s recent metric ever exceeds the threshold, so every score is 0 and the ranking is meaningless). Critically, `rollback verify` on `v2_broken` **returns PASS** — the SHA-256 hash of the re-run output matches the hash stored at training time, because `v2_broken` is *self-consistent*: it deterministically produces all-zero bytes every time. Verification proves **byte-level reproducibility**, not operational correctness.
+
+This is why human promotion review exists as a separate gate. Automated verification cannot detect that a model is operationally worthless — only a human inspecting the ranked output can. The retrain policy’s 3-consecutive-week threshold exists to separate real distributional shift from noise. Human sign-off before promotion is the control that makes rollback meaningful.
 
 ### Consequences
 - **Positive:** Prevents retraining loops on noisy or transient single-week sensor anomalies.
@@ -147,17 +151,22 @@ Auto-retraining on a single anomalous week promotes a new model during the same 
 4. **New-Gateway Cold Start:** A gateway installed fewer than 24 hours before a prediction run has no per-gateway baseline statistics and is explicitly excluded from ranking (ADR 0007). A genuinely failing new gateway will not be caught until it accumulates sufficient history.
 5. **Episode Re-detection After Visit:** The scoring model does not track which gateways have already been visited in the current fault episode. A gateway ranked #1 two weeks running may be the same ongoing fault, not a new one — re-visiting it wastes a €380 dispatch slot.
 
+### Already Implemented
+
+Capabilities that are **fully implemented** in the current codebase:
+
+- **`POST /api/predictions/run` — inference refresh without container restart** (implemented in `backend/api/routers/predictions.py`): drops the cached `predictions.csv` and re-runs the full inference pipeline against the currently ACTIVE model version. No container restart required. The next `GET /api/predictions` serves fresh results.
+- **Historical/replay-aware silent-gateway monitoring** (implemented in `src/drift_monitor.py`): the silent-gateway cutoff uses `max(ts)` from the incoming telemetry as the anchor rather than the system clock. Historical datasets evaluated after their collection date no longer incorrectly classify all gateways as silent.
+
 ### What Two More Weeks Would Fix
 
 Ranked by estimated impact on the €600/week cost metric:
 
 1. **Episode tracking** (Week 1, high impact): Build a visit-history cache in `predict.py` so gateways already visited in the trailing N weeks are down-weighted rather than re-ranked identically. This directly targets the most expensive mistake available: re-dispatching to a gateway in the same continuous fault episode.
 2. **Meter-read success integration** (Week 1, high impact): `data/meter_read_success.csv` records how many meters were read per gateway per week. A gateway with 60% meter read rate is already costing €600/week for unread meters. Incorporating this as a multiplicative weight on the anomaly score would prioritize gateways whose failures are already measurably costly — without requiring any additional data source.
-3. **`POST /api/predictions/run` cache invalidation** (Week 1, medium impact): **Already implemented** — `backend/api/routers/predictions.py` exposes `POST /api/predictions/run`, which drops the cached `predictions.csv` and re-runs the full inference pipeline against the currently ACTIVE model version. No container restart required. The next `GET /api/predictions` serves fresh results.
-5. **Economic candidate validation utility** (Week 2, medium impact): A small CLI compare script that runs both candidate and active versions on held-out weeks and prints the net cost delta using the EUR 380/EUR 600 framework. This would make RETRAIN_POLICY.md Section 3 automated rather than operator-manual -- the cheapest implementation is a 30-line script.
-6. **Historical/replay-aware monitoring** (Week 1, medium impact): Already implemented as Fix 1 -- the silent-gateway cutoff now uses `max(ts)` from telemetry rather than the wall clock, so the drift monitor works correctly on historical data evaluated after its collection date.
-7. **Operational workflow for silent gateways** (Week 2, low impact): A dispatcher queue endpoint (`GET /api/drift/silent-gateways`) that returns only the advisory silent-gateway list, separate from the full drift report. This simplifies operator tooling for the most urgent class of failure.
-4. **Retrain on ground-truth feedback loop** (Week 2, high impact): The current retrain policy requires 3 consecutive drift flags. With two more weeks, we would collect field visit outcomes from the scored window, use `field_visits.outcome == "Fehler behoben"` as a weak positive label, and validate whether a supervised signal (logistic regression or XGBoost) beats the 3-sigma baseline on total cost — not just accuracy.
+3. **Economic candidate validation utility** (Week 2, medium impact): A small CLI compare script that runs both candidate and active versions on held-out weeks and prints the net cost delta using the EUR 380/EUR 600 framework. This would make RETRAIN_POLICY.md Section 3 automated rather than operator-manual — the cheapest implementation is a 30-line script.
+4. **Operational workflow for silent gateways** (Week 2, low impact): A dispatcher queue endpoint (`GET /api/drift/silent-gateways`) that returns only the advisory silent-gateway list, separate from the full drift report. This simplifies operator tooling for the most urgent class of failure.
+5. **Retrain on ground-truth feedback loop** (Week 2, high impact): The current retrain policy requires 3 consecutive drift flags. With two more weeks, we would collect field visit outcomes from the scored window, use `field_visits.outcome == "Fehler behoben"` as a weak positive label, and validate whether a supervised signal (logistic regression or XGBoost) beats the 3-sigma baseline on total cost — not just accuracy.
 
 ---
 
