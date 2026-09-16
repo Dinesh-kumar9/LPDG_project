@@ -80,12 +80,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip "setuptools>=68" wheel
           pip install -r requirements.txt
-          pip install "pytest>=8.3.0" "pytest-asyncio>=0.24.0"
+          pip install \
+            "pytest>=8.3.0" \
+            "pytest-cov>=6.0.0" \
+            "pytest-asyncio>=0.24.0"
 
       - name: Determinism Gate — byte-identical output on Linux
         run: |
           pytest tests/test_determinism.py tests/test_portable_pipeline.py -v \
             --tb=short \
+            -o addopts="-v" \
             -p no:randomly
         env:
           PYTHONPATH: .
@@ -93,7 +97,8 @@ jobs:
       - name: Rollback Lifecycle Gate — synthetic end-to-end on Linux
         run: |
           pytest tests/test_rollback.py::test_rollback_lifecycle_synthetic -v \
-            --tb=short
+            --tb=short \
+            -o addopts="-v"
         env:
           PYTHONPATH: .
 
